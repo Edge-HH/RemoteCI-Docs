@@ -9,7 +9,7 @@ order: 5
 ## ClassIsland 插件无法连接服务器
 
 1. 打开 ClassIsland 的“RemoteCI 设置”，先看“服务器状态”和“最近错误”，不要只依据服务端健康检查判断插件已经连通。
-2. 确认“RemoteCI 开发者设置”没有关闭云端连接，云端地址包含正确的 <code>http://</code> 或 <code>https://</code>、域名和端口。
+2. 若需检查云端开关，先在普通设置开启“显示开发者设置菜单”并重启 ClassIsland，再确认开发者设置没有关闭云端连接；云端地址应包含正确的 <code>http://</code> 或 <code>https://</code>、域名和端口。
 3. 修改服务器地址后保存并重启 ClassIsland；首次配对或凭据失效时，在 WebUI 概览页重新生成一次性插件配对码并保存。
 4. 点击“测试服务器连接”。已有连接时会直接验证真实 WebSocket 通道；断线时会跳过 5 秒至 2 分钟的自动重连退避，并实际执行配对、WebSocket 鉴权和初始化。若测试超时，继续检查 HTTPS 证书、反向代理 WebSocket Upgrade 和内网穿透的 TCP/HTTPS 配置。
 5. 设置页错误经过凭据脱敏；需要网络异常的完整调用信息时再查看 ClassIsland 日志，反馈问题时不要公开配对码或长期凭据。
