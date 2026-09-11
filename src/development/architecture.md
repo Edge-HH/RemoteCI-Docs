@@ -6,7 +6,7 @@ order: 1
 
 # 项目架构
 
-RemoteCI 采用一个主项目仓库和一个独立文档仓库。当前稳定三端软件版本统一为 3.2.1.2，通信协议号独立为整数 3；稳定版使用 ClassIsland 要求的四段纯数字标签，Beta 保留 v3.x.x-beta.y 供测试且不进入插件市场。协议 v3 拆分主界面与电源权限，并增加独立扩展权限、逐扩展策略和能力协商。
+RemoteCI 采用一个主项目仓库和一个独立文档仓库。当前稳定三端软件版本统一为 3.2.1.3，通信协议号独立为整数 3；稳定版使用 ClassIsland 要求的四段纯数字标签，Beta 保留 v3.x.x-beta.y 供测试且不进入插件市场。协议 v3 拆分主界面与电源权限，并增加独立扩展权限、逐扩展策略和能力协商。
 
 ## 运行组件
 
@@ -89,11 +89,11 @@ WebUI 的有效能力是“服务端 ∩ 当前主插件”，手表的有效能
 
 新增 `voice-message.send` 必须显式协商，不加入旧 V3 端默认获得的基础能力。新端使用当前能力列表通告语音支持；界面能力与独立的发送语音权限同时满足才显示入口。
 
-- 插件 3.2.1.2：net8.0，兼容 ClassIsland 2.x 宿主；CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
-- 服务端 3.2.1.2：net10.0，发布 linux-x64 / win-x64 平台包。
-- 手表 3.2.1.2：minSdk 30 / targetSdk 37，Release APK 使用签名密钥构建。
+- 插件 3.2.1.3：net8.0，兼容 ClassIsland 2.x 宿主；CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
+- 服务端 3.2.1.3：net10.0，发布 linux-x64 / win-x64 平台包。
+- 手表 3.2.1.3：minSdk 30 / targetSdk 37，Release APK 使用签名密钥构建。
 - Wear OS 源码若位于云盘或 NAS 按需同步目录，可在不入库的 <code>wearos/local.properties</code> 中设置 <code>remoteci.buildDir=C:/本地目录</code>，将 Gradle 生成文件放到普通本地磁盘，避免重解析占位文件触发 <code>Cannot snapshot ... not a regular file</code>；也支持环境变量 <code>REMOTECI_WEAROS_BUILD_DIR</code> 和命令行属性 <code>-Premoteci.buildDir</code>。
 
 ## 开发状态
 
-3.2.1.2 已完成独立“老师来了”指令与权限、WebUI 控制页、V3 协议和三端能力协商。发布前仍应使用稳定四段版本和 Beta 版本在真机完成端到端验收，见[开发状态](../guide/status.md)。
+3.2.1.3 已完成独立“老师来了”指令与权限、WebUI 控制页、V3 协议和三端能力协商。发布前仍应使用稳定四段版本和 Beta 版本在真机完成端到端验收，见[开发状态](../guide/status.md)。

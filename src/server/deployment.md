@@ -90,7 +90,7 @@ HTTP 和 WS 不能保护登录密码、访问令牌与课表内容。不要通�
 - 手表：<code>RemoteCI.Watch-版本.apk</code>。
 - 飞牛 fnOS：在线多架构 <code>RemoteCI-版本.fpk</code>，或对应架构的 x86_64/ARM64 离线 FPK（安装与更新见[飞牛 fnOS 安装](./fnos.md)）。
 
-稳定 Release 标签必须是四段纯数字（例如 <code>3.2.1.2</code>）；Beta 标签使用 <code>v3.x.x-beta.y</code>。旧三段 <code>v3.x.x</code> 稳定标签仅保留历史兼容记录，不再作为新更新候选。
+稳定 Release 标签必须是四段纯数字（例如 <code>3.2.1.3</code>）；Beta 标签使用 <code>v3.x.x-beta.y</code>。旧三段 <code>v3.x.x</code> 稳定标签仅保留历史兼容记录，不再作为新更新候选。
 
 仓库根目录的 <code>remoteci.plugin.yml</code> 已按 ClassIsland 市场字段准备，可直接复制到
 <code>ClassIsland/PluginIndex/index/plugins-v2/</code>；插件包内的 <code>manifest.yml</code> 与该描述文件保持一致。
