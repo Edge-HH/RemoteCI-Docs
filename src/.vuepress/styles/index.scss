@@ -20,3 +20,11 @@
   border-radius: 16px;
 }
 
+// 主题给首页功能卡片的图标固定了 font-weight: 400，
+// 这会让 Font Awesome 的 solid 图标改用只包含少量字形的 regular 字体，
+// 只有 regular 有字形的图标正常，其余会显示为方框。
+// 这里把 solid 图标恢复到应有的 900 字重。
+.vp-feature-item .vp-icon.fas,
+.vp-feature-item .vp-icon.fa-solid {
+  font-weight: 900;
+}
