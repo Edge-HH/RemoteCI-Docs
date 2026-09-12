@@ -69,6 +69,13 @@ export default hopeTheme({
       contributors: false,
       changelog: false,
     },
+    // 图标统一使用 Font Awesome 6 短名称（如 home、brands:github）。
+    // CSS 与字体由 .vuepress/client.ts 在构建时打包，assets 留空即可，
+    // 这样不会再从 CDN 动态拉取图标资源。
+    icon: {
+      assets: [],
+      type: "fontawesome",
+    },
     slimsearch: true,
     components: {
       components: ["Badge", "VPCard"],

@@ -6,7 +6,7 @@ order: 1
 
 # 项目架构
 
-RemoteCI 采用一个主项目仓库和一个独立文档仓库。当前稳定三端软件版本统一为 3.2.1.3，通信协议号独立为整数 3；稳定版使用 ClassIsland 要求的四段纯数字标签，Beta 保留 v3.x.x-beta.y 供测试且不进入插件市场。协议 v3 拆分主界面与电源权限，并增加独立扩展权限、逐扩展策略和能力协商。
+RemoteCI 采用一个主项目仓库和一个独立文档仓库。当前稳定三端软件版本统一为 3.2.1.4，通信协议号独立为整数 3；稳定版使用 ClassIsland 要求的四段纯数字标签，Beta 保留 v3.x.x-beta.y 供测试且不进入插件市场。协议 v3 拆分主界面与电源权限，并增加独立扩展权限、逐扩展策略和能力协商。
 
 ## 运行组件
 
@@ -89,11 +89,12 @@ WebUI 的有效能力是“服务端 ∩ 当前主插件”，手表的有效能
 
 新增 `voice-message.send` 必须显式协商，不加入旧 V3 端默认获得的基础能力。新端使用当前能力列表通告语音支持；界面能力与独立的发送语音权限同时满足才显示入口。
 
-- 插件 3.2.1.3：net8.0，兼容 ClassIsland 2.x 宿主；CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
-- 服务端 3.2.1.3：net10.0，发布 linux-x64 / win-x64 平台包。
-- 手表 3.2.1.3：minSdk 30 / targetSdk 37，Release APK 使用签名密钥构建。
+- 插件 3.2.1.4：net8.0，兼容 ClassIsland 2.x 宿主；插件程序集为 AnyCPU，可随 ClassIsland 的 x86、x64 与 arm64 Windows 宿主一起加载，因此不得设置 x64 等平台专用目标。CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
+- 插件读写宿主成员时区分两类 API：签名稳定的接口直接编译绑定；ClassIsland 2.2 预览版（2.1.1.x）改过签名的成员（<code>Profile.Subjects</code>、<code>Profile.ClassPlans</code>、<code>FluentIcon.Glyph</code>、窗口装饰枚举、动态资源绑定的 <code>Bind</code> 重载）统一经 <code>HostApiCompat</code> 反射访问，避免同一份包在旧宿主可用、在新宿主抛 <code>MissingMethodException</code>。注意同名重载差异（如 <code>Bind(AvaloniaProperty, IBinding)</code> 变为 <code>Bind(AvaloniaProperty, BindingBase)</code>）无法靠编译期检查发现，新增宿主调用后需按目标版本的签名实际核对。
+- 服务端 3.2.1.4：net10.0，发布 linux-x64 / win-x64 平台包。
+- 手表 3.2.1.4：minSdk 30 / targetSdk 37，Release APK 使用签名密钥构建。
 - Wear OS 源码若位于云盘或 NAS 按需同步目录，可在不入库的 <code>wearos/local.properties</code> 中设置 <code>remoteci.buildDir=C:/本地目录</code>，将 Gradle 生成文件放到普通本地磁盘，避免重解析占位文件触发 <code>Cannot snapshot ... not a regular file</code>；也支持环境变量 <code>REMOTECI_WEAROS_BUILD_DIR</code> 和命令行属性 <code>-Premoteci.buildDir</code>。
 
 ## 开发状态
 
-3.2.1.3 已完成独立“老师来了”指令与权限、WebUI 控制页、V3 协议和三端能力协商。发布前仍应使用稳定四段版本和 Beta 版本在真机完成端到端验收，见[开发状态](../guide/status.md)。
+3.2.1.4 已完成独立“老师来了”指令与权限、WebUI 控制页、V3 协议和三端能力协商，并修复 ClassIsland x86/arm64 宿主的程序集架构加载与 2.2 预览版宿主 API 兼容问题。发布前仍应使用稳定四段版本和 Beta 版本在真机完成端到端验收，见[开发状态](../guide/status.md)。

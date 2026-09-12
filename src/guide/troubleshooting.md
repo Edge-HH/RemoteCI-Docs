@@ -6,6 +6,14 @@ order: 5
 
 # 故障排查
 
+## ClassIsland 提示插件架构不兼容
+
+ClassIsland 日志出现 <code>The assembly architecture is not compatible with the current process architecture</code> 时，说明当前运行的是 x86 或 arm64 版 ClassIsland，而安装的插件包是 x64 专用构建，插件会在启动阶段直接加载失败，ClassIsland 也不会显示 RemoteCI 设置页。请升级到包含此修复的 <code>RemoteCI.Plugin.cipx</code>：插件程序集为 AnyCPU，可以随 ClassIsland 的 x86、x64 与 arm64 Windows 宿主一起加载。安装后重新启用插件并重启 ClassIsland。
+
+## ClassIsland 2.2 预览版上的语音与课表异常
+
+ClassIsland 2.2 预览版（版本号 2.1.1.x）改动了部分公开 API 的类型，早期版本的 RemoteCI 插件会因此报错：日志出现 <code>Method not found</code> 或 <code>MissingMethodException</code>，表现为发送语音消息时浮窗无法打开，日志每 30 秒提示“生成或推送七日课表失败”，WebUI 与手表也拿不到课表。请升级到包含兼容层的插件版本，同一份 <code>RemoteCI.Plugin.cipx</code> 即可同时运行在 ClassIsland 2.0/2.1 稳定版与 2.2 预览版上。仍在使用 ClassIsland 2.1.0.1 等稳定版的用户不受影响，也不需要额外设置。
+
 ## ClassIsland 插件无法连接服务器
 
 1. 打开 ClassIsland 的“RemoteCI 设置”，先看“服务器状态”和“最近错误”，不要只依据服务端健康检查判断插件已经连通。

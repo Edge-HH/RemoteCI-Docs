@@ -74,3 +74,7 @@ pnpm docs:build
 - 不写未经源码或实际运行验证的功能。
 - 尚未完成的能力标为“计划中”或“开发中”。
 - 涉及密码、令牌和配对码时，示例只能使用占位值。
+
+## 图标资源
+
+页面和主题配置中的图标使用 Font Awesome 6 短名称，例如 <code>home</code> 或 <code>brands:github</code>。CSS 与字体在构建时由 <code>src/.vuepress/client.ts</code> 打包进站点，不依赖运行时 CDN；新增图标前请先在 Font Awesome 免费图标集中确认名称可用。

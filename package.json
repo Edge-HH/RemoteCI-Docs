@@ -9,6 +9,7 @@
     "docs:clean-dev": "vuepress-vite dev src --clean-cache"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@vuepress/bundler-vite": "2.0.0-rc.30",
     "@vuepress/plugin-slimsearch": "2.0.0-rc.130",
     "sass-embedded": "^1.99.0",
