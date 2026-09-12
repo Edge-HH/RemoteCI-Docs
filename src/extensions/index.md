@@ -101,7 +101,7 @@ public sealed class LockScreenExtension : RemoteCiExtensionBase
     public override UserPermissions RequiredPermission => UserPermissions.RunExtensions;
 
     /// <summary>可选 Material 图标名；未命中手表白名单时回退为纯文字。</summary>
-    public override string? Icon => "power";
+    public override string? Icon => "lock";
 
     public override Task<CommandResult> ExecuteAsync(
         ExtensionExecutionContext context,
@@ -251,7 +251,7 @@ public class MyPluginEntry : PluginBase
 | `Id` | `string` | 全局唯一扩展 Id；必须非空、无首尾空白且不超过 200 个字符，与已有注册项冲突时 `Register` 会抛出异常 |
 | `DisplayName` | `string` | 手表与 WebUI 控制菜单展示的文案 |
 | `RequiredPermission` | `UserPermissions` | 旧扩展兼容字段；建议返回 `RunExtensions`，当前不参与额外鉴权 |
-| `Icon` | `string?` | 可选 Material 图标名；未知或缺失时手表回退为纯文字 |
+| `Icon` | `string?` | 可选 Material 图标名；取值见[扩展图标名](#扩展图标名)，未知或缺失时手表回退为纯文字 |
 | `Parameters` | `IReadOnlyList<ExtensionParameter>` | 可选参数表单描述；为空时点击后直接执行 |
 | `ExecuteAsync` | 方法 | 执行远程功能；异常统一由 RemoteCI 转为 `INTERNAL_ERROR` 回执 |
 
@@ -314,6 +314,35 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 
 所有扩展调用统一只要求 `RunExtensions`。`RequiredPermission` 为旧扩展及协议兼容而保留，建议新实现返回 `RunExtensions`；它不再让扩展入口依赖 `SendNotifications`、`PowerControl` 等其他业务权限。旧名称 `SystemControl` 仍作为 `PowerControl` 的源码兼容别名保留。
 
+## 扩展图标名
+
+`Icon` 取值为手表端内置的 Material 图标白名单。图标名不区分大小写，下划线、连字符、空格会被忽略，`Icons.Rounded.` 前缀同样可省略，因此 `PowerSettingsNew`、`power_settings_new`、`Icons.Rounded.PowerSettingsNew` 等价。未命中白名单或留空时，按钮回退为纯文字。
+
+| 分类 | 可用图标名 |
+| --- | --- |
+| 教学与班级 | `school`、`class`、`assignment`、`grading`、`quiz`、`menu_book`、`library_books`、`cast_for_education`、`science`、`translate` |
+| 通知与消息 | `edit_notifications`、`notifications_active`、`notifications_off`、`notifications_paused`、`notification_important`、`campaign`、`announcement`、`chat`、`sms`、`email`、`ring_volume` |
+| 显示与投屏 | `cast`、`cast_connected`、`present_to_all`、`broadcast_on_home`、`tv`、`monitor`、`smart_display`、`fullscreen`、`screen_share` |
+| 设备与环境 | `power_settings_new`、`settings_power`、`bolt`、`lightbulb`、`nightlight`、`thermostat`、`ac_unit`、`sensor_door`、`air`、`battery_saver`、`router` |
+| 音视频与媒体 | `volume_down`、`volume_off`、`volume_mute`、`mic`、`mic_off`、`headphones`、`speaker`、`play_circle`、`pause_circle` |
+| 系统与运维 | `settings`、`tune`、`system_update`、`download`、`upload`、`cloud_upload`、`cloud_download`、`sync`、`restart_alt`、`swap_horiz`、`terminal`、`code`、`save` |
+| 网络与连接 | `wifi`、`wifi_off`、`bluetooth`、`link` |
+| 账号与权限 | `person`、`group`、`groups`、`account_circle`、`admin_panel_settings`、`security`、`shield`、`verified_user`、`login`、`logout` |
+| 状态与提示 | `visibility`、`visibility_off`、`lock`、`lock_open`、`check_circle`、`cancel`、`close`、`warning`、`error`、`help`、`celebration` |
+| 时间与课表 | `schedule`、`calendar_month`、`today`、`event_note`、`alarm`、`timer` |
+| 场景与其他 | `local_hospital`、`emergency`、`fitness_center`、`restaurant`、`do_not_disturb` |
+
+以下名字是历史别名，为兼容早期版本保留，优先级高于同名 Material 图标（例如 `clear` 始终是清除通知图标而不是 `close`）：
+
+`notification`、`notifications`、`message`、`volume`、`volumeup`、`power`、`poweroff`、`gear`、`update`、`restart`、`reboot`、`swap`、`exchange`、`connect`、`show`、`hide`、`hidden`、`clear`、`clearnotifications`
+
+白名单随手表版本发布，未列出的图标名需要先加入手表端白名单并等待手表更新后才生效：
+
+```csharp
+/// <summary>使用白名单中的 Material 图标名。</summary>
+public override string? Icon => "broadcast_on_home";
+```
+
 ## 参数表单
 
 扩展可声明 `Parameters` 列表，手表与 WebUI 按 schema 渲染参数输入页，用户填写后以 `extensionArgs` 字典传入 `ExecuteAsync`（键为参数 `Key`，值统一为字符串）：
@@ -351,6 +380,7 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 - 参数解析要防御 `null`，使用 `args.GetValueOrDefault(key)` 并给出兜底值。
 - 插件更新时尽量保持接口兼容，避免因为 `RemoteCI.Plugin.dll` 版本不一致导致扩展不可用。
 - 与 RemoteCI 内置命令同类型的操作不要重复注册，避免控制菜单冗余。
+- `Icon` 只能填写[扩展图标名](#扩展图标名)中的白名单项；该白名单在手表端编译期固化，插件不能自定义图片或图标。
 
 ## 常见问题排查
 
