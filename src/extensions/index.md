@@ -331,6 +331,7 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 | 状态与提示 | `visibility`、`visibility_off`、`lock`、`lock_open`、`check_circle`、`cancel`、`close`、`warning`、`error`、`help`、`celebration` |
 | 时间与课表 | `schedule`、`calendar_month`、`today`、`event_note`、`alarm`、`timer` |
 | 场景与其他 | `local_hospital`、`emergency`、`fitness_center`、`restaurant`、`do_not_disturb` |
+| 随机与刷新 | `shuffle`、`casino`、`autorenew`、`cached` |
 
 以下名字是历史别名，为兼容早期版本保留，优先级高于同名 Material 图标（例如 `clear` 始终是清除通知图标而不是 `close`）：
 
