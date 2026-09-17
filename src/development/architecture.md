@@ -24,6 +24,7 @@ ClassIsland 插件 ── 局域网 WebSocket（HMAC 挑战认证）── Wear 
 | <code>plugin</code> | .NET 8、ClassIsland Plugin SDK | 收集课表状态、提供局域网服务、执行远程命令、注册扩展、旁路观察通知 |
 | <code>server</code> | ASP.NET Core 10、SQLite、WebSocket | 身份认证、权限检查、状态保存、消息中转与自动更新 |
 | <code>wearos</code> | Kotlin、Compose for Wear OS（minSdk 30） | 展示课程、课表、通知与操作界面 |
+| <code>android</code> | Kotlin / Jetpack Compose Material 3 Expressive 手机应用（minSdk 26）。 | 承接 WebUI 与手表的课表、控制和人员管理 |
 | <code>shared</code> | C# 模型库 | 插件与服务端共享协议 v3 和数据模型 |
 
 ## 数据流
