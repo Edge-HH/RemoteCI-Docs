@@ -42,7 +42,7 @@ export default hopeTheme({
       {
         text: "服务端",
         icon: "server",
-        children: ["deployment", "fnos", "configuration", "operations"],
+        children: ["deployment", "fnos", "configuration", "operations", "api"],
       },
     ],
     "/extensions/": [

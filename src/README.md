@@ -36,7 +36,10 @@ features:
     details: 控制音量、电源、ClassIsland 主界面显隐，还能执行其他插件注册的扩展功能。
   - title: 自动更新
     icon: cloud-arrow-down
-    details: WebUI 与手表端可从 GitHub 最新 release 一键检查并升级，插件由插件市场管理。
+    details: WebUI 与手表端可从 GitHub 最新 release 一键检查并升级；管理员还可在批量控制页更新 ClassIsland、安装或卸载插件、分发档案和加入集控。
+  - title: 开放 API
+    icon: code
+    details: 管理员和班管理员可创建 API Key，让脚本按账号现有权限读取课堂信息、发送命令或管理 RemoteCI。
 ---
 
 RemoteCI 是面向 ClassIsland 2.x 的课表手表联动项目，由 ClassIsland 插件、ASP.NET Core 服务端、Wear OS 客户端和共享通信协议组成。
@@ -80,3 +83,4 @@ RemoteCI 是面向 ClassIsland 2.x 的课表手表联动项目，由 ClassIsland
 - 需要按账号分配查看课表、管理课表、发送通知或管理用户的权限。
 - 希望数据保留在自己的 NAS、服务器或局域网环境中。
 - 希望通过扩展接口把更多课堂操作带到手表。
+- 希望通过 API Key 把课表、课堂状态或受权限保护的操作接入自己的脚本与自动化平台。
