@@ -49,7 +49,7 @@ export default hopeTheme({
       {
         text: "接入扩展",
         icon: "puzzle-piece",
-        children: ["index"],
+        children: ["index", "astrbot"],
       },
     ],
     "/development/": [

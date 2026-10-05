@@ -76,6 +76,7 @@ docker compose logs --tail 200 remoteci
 - 初始密码至少 8 位，实际部署建议使用随机长密码。
 - 不在 Compose 文件、截图或问题反馈中公开密码、令牌、配对码和 API Key。API Key 只在创建时显示一次，泄露后应立即在“个人账号”或“人员权限”中吊销。
 - 普通用户按最小权限分配，设备丢失后立即撤销会话。
-- “老师来了”（TeacherComing）单独保护快捷提醒；“发送与清除通知”（SendNotifications）保护自定义通知和清除提醒；“扩展功能”（RunExtensions）是插件扩展的独立总权限；“主界面”（MainMenuControl）保护主界面显隐；“电源控制”（PowerControl）保护音量与电源操作；“修改用户名”（ChangeDisplayName）允许账号自行修改自己的显示名，默认不授予学生角色。
+- “老师来了”（TeacherComing）单独保护快捷提醒；“发送与清除通知”（SendNotifications）保护自定义通知和清除提醒；“扩展功能”（RunExtensions）是插件扩展的独立总权限；“主界面”（MainMenuControl）保护主界面显隐；“电源控制”（PowerControl）保护音量与电源操作；用户名（显示名）只能由系统管理员修改，因为它是老师关联课表的依据；“修改用户名”（ChangeDisplayName）权限位仅为兼容旧数据保留。
+- 远程终端和文件分发可在教室电脑上执行任意命令或写入文件，只有系统管理员可以使用；应妥善保护管理员账号，并在不需要时避免日常使用管理员身份登录。
 - 定期备份并实际演练恢复。
 - 定期更新服务端镜像、插件和手表应用。
