@@ -1,10 +1,10 @@
 ---
-title: AstrBot 聊天机器人
+title: RemoteCI AstrbotConnector
 icon: robot
 order: 2
 ---
 
-# AstrBot 聊天机器人
+# RemoteCI AstrbotConnector
 
 ::: warning 开发中
 AstrBot 插件仍在开发中，需要 AstrBot 4.26 或更新版本。插件仓库：[Edge-HH/astrbot_plugin_remoteci](https://github.com/Edge-HH/astrbot_plugin_remoteci)。

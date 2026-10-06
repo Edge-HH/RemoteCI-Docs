@@ -41,6 +41,7 @@ API Key 固定以 `rci_` 开头。不要把密钥放进 URL 查询参数、浏�
 
 - `POST /api/auth/login`
 - `POST /api/auth/mobile-login`（凭 WebUI 概览页生成的一次性扫码票据换取设备会话）
+- `POST /api/auth/web-ticket`（需设备会话 Bearer 令牌，API Key 不可用；返回 `{ ticket, path, expiresAt }`。用浏览器打开 `服务器地址 + path`，可追加 `&returnUrl=/Control`（仅限本站路径）和 `&classId=<班级 Id>`，即以该账号登录 WebUI。票据 1 分钟内有效、只能使用一次）
 - `POST /api/auth/refresh`
 - `POST /api/auth/setup-password`
 - `POST /api/auth/logout`
@@ -164,7 +165,7 @@ RemoteCI 仓库的 `skills/remoteci` 是一个 Agent Skill。它让 AI 助手以
 | --- | --- |
 | 学生 | 查看所在班级的当前课程和未来七日课表 |
 | 老师 | 问“下节课去哪上什么”，查看跨班级的“我的日程”；向任教班级发送通知、语音；发起、审批、拒绝换课申请，撤回被强制换走的课 |
-| 班主任 | 在本班发送通知、“老师来了”、换课、设置科目教师、运行扩展、修改班级名称和头像；和老师一样查看“我的日程”、问“下节课去哪上什么” |
+| 班主任 | 在本班发送通知、换课、设置科目教师、运行扩展、修改班级名称和头像；和老师一样查看“我的日程”、问“下节课去哪上什么” |
 | 系统管理员 | 以上全部；另外可以创建、改名、删除班级，管理分组、账号和班级成员分配，生成插件配对码，以及对多个班级或分组集控广播 |
 
 使用方法：
@@ -184,7 +185,7 @@ RemoteCI 仓库的 `skills/remoteci` 是一个 Agent Skill。它让 AI 助手以
 
 电源、重启、远程终端、文件分发、删除和全校广播等高影响操作，Agent 会先复述目标和内容，经你确认后才执行。
 
-想在 QQ、Telegram 等聊天平台里使用同样的能力，并让老师收到日程和换课的主动提醒，见 [AstrBot 聊天机器人](../extensions/astrbot.md)（开发中）。
+想在 QQ、Telegram 等聊天平台里使用同样的能力，并让老师收到日程和换课的主动提醒，见 [RemoteCI AstrbotConnector](../extensions/astrbot.md)（开发中）。
 
 ### 修改用户名
 
@@ -276,7 +277,6 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `5` | 电源操作 | 电源控制 |
 | `6` | 音量控制 | 电源控制 |
 | `7` | 执行扩展功能 | 扩展功能 |
-| `8` | 老师来了 | 老师来了 |
 | `9` | 发送语音消息 | 发送语音 |
 | `10` | 升级插件 | 人员管理 |
 | `11` | 升级 ClassIsland | 人员管理 |
