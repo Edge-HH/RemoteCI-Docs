@@ -41,7 +41,7 @@ API Key 固定以 `rci_` 开头。不要把密钥放进 URL 查询参数、浏�
 
 - `POST /api/auth/login`
 - `POST /api/auth/mobile-login`（凭 WebUI 概览页生成的一次性扫码票据换取设备会话）
-- `POST /api/auth/web-ticket`（需设备会话 Bearer 令牌，API Key 不可用；返回 `{ ticket, path, expiresAt }`。用浏览器打开 `服务器地址 + path`，可追加 `&returnUrl=/Control`（仅限本站路径）和 `&classId=<班级 Id>`，即以该账号登录 WebUI。票据 1 分钟内有效、只能使用一次）
+- `POST /api/auth/web-ticket`（需设备会话 Bearer 令牌，API Key 不可用；返回 `{ ticket, path, expiresAt }`。用浏览器打开 `服务器地址 + path`，可追加 `&returnUrl=/Control`（仅限本站路径）和 `&classId=<班级 Id>`，即以该账号登录 WebUI。票据 1 分钟内有效、只能成功兑换一次，签发新票据会作废同一账号的旧票据；服务端只保存票据摘要并持久化在数据库中，服务重启或多实例共享数据库时仍可兑换；账号被停用、锁定或改密后票据立即失效。票据会出现在浏览器地址栏，生产环境请务必使用 HTTPS）
 - `POST /api/auth/refresh`
 - `POST /api/auth/setup-password`
 - `POST /api/auth/logout`
