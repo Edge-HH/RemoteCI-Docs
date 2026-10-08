@@ -37,9 +37,12 @@ features:
   - title: 丰富控制
     icon: sliders
     details: 控制音量、电源、ClassIsland 主界面显隐，还能执行其他插件注册的扩展功能，并在 WebUI 统一下发插件设置。
+  - title: 独立档案管理
+    icon: folder-open
+    details: 维护服务器档案模板，批量编辑各班时间表和课表，保存后明确选择方式下发；班主任可单独管理本班档案。
   - title: 自动更新
     icon: cloud-arrow-down
-    details: WebUI 与手表端可从 GitHub 最新 release 一键检查并升级；管理员还可在批量控制页更新 ClassIsland、安装或卸载插件、分发档案和加入集控。
+    details: WebUI 与手表端可从 GitHub 最新 release 一键检查并升级；管理员还可在批量控制页更新 ClassIsland、安装或卸载插件和加入集控。
   - title: 开放 API
     icon: code
     details: 管理员和班主任可创建 API Key，让脚本按账号现有权限读取课堂信息、发送命令或管理 RemoteCI。
