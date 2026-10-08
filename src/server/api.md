@@ -413,6 +413,18 @@ POST /api/commands/broadcast
 | `DELETE` | `/api/admin/backups/{name}` | 删除备份 |
 | `POST` | `/api/admin/backups/{name}/restore` | 恢复备份并重启服务 |
 
+### 调休
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/holidays` | 任何登录账号：返回开关 `enabled`、数据源、刷新状态 `status {lastAttemptAt, lastSuccessAt, lastError}`、近期假期 `periods[] {name, offStart, offEnd, makeupDays[]}` 与已失效的手动安排 `staleOverrideDates` |
+| `PUT` | `/api/admin/holidays/settings` | 请求体 `{"enabled":true,"sourceUrlTemplate":null}`；自定义地址必须是包含 `{year}` 的 https 地址；仅系统管理员 |
+| `PUT` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 请求体 `{"followWeekday":3}` 指定调休上学日上周几（1-5）的课，`null` 表示不补课；日期必须是调休上学日；仅系统管理员 |
+| `DELETE` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 恢复自动推算；仅系统管理员 |
+| `POST` | `/api/admin/holidays/refresh` | 立即拉取节假日数据，返回刷新状态；仅系统管理员 |
+
+`makeupDays[]` 每项为 `{date, autoWeekday, followWeekday, followSource}`：`autoWeekday` 是自动推算值，`followWeekday` 是最终生效值，`followSource` 为 `auto` / `manual` / `skip` / `unresolved`。修改类接口成功后返回最新的总览；日期格式错误、不是调休上学日或周几超出 1-5 时返回 400。
+
 ## 完整调用流程示例
 
 ~~~powershell
