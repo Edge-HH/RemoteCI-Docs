@@ -76,7 +76,7 @@ SQLite／EF Core 保存完整 ClassIsland JSON、名称、修订号、来源模�
 
 命令 `26 ReadProfile`（能力 `profile.read`）无载荷，插件在 UI 线程把当前内存档案序列化后放进 `CommandResult.data` 返回；服务端逐班校验权限后并发发送，按宿主 `RefreshClassesList` 规则对齐课程数并清除悬空指针，结果只作为浏览器草稿或 API 返回值，不写入档案库。
 
-临时层即 `IsOverlay=true` 的课表（及可选的临时层时间表），由 `OrderedSchedules[日期]` 指向。共享层 `ProfileDocument` 让常规选择跳过临时层，更新与整体替换后按宿主 `RefreshClassesList` 规则修复设备临时层（对齐课程数、缺失科目改空课、缺失课表群改默认），仅时间表不存在时移除；`BuildTempLayerSelection` 只打包所选临时层及其依赖，`ApplyTempLayers` 在插件端逐日写入：跳过过期日期，同日已有安排需明确替换，科目与课表群只补缺，时间表与设备不一致时写成临时层时间表副本，临时层课表用新 ID，并在当天生效时设置 `OverlayClassPlanId`。
+临时层即 `IsOverlay=true` 的课表（及可选的临时层时间表），由 `OrderedSchedules[日期]` 指向。共享层 `ProfileDocument` 让常规选择跳过临时层，更新与整体替换后按宿主 `RefreshClassesList` 规则修复设备临时层（对齐课程数、缺失科目改空课、缺失课表群改默认），仅时间表不存在时移除；`BuildTempLayerSelection` 只打包所选临时层及其依赖，`ApplyTempLayers` 在插件端逐日写入：跳过过期日期，同日已有安排需明确替换，科目与课表群只补缺，时间表与设备不一致时写成临时层时间表副本，临时层课表用新 ID；写入后总是打开 `IsOverlayClassPlanEnabled`（宿主只有该开关打开才按日期使用临时层），当天生效时设置 `OverlayClassPlanId`。编辑器按各班状态快照的时区偏移判断临时层是否过期。
 
 `ApplyProfile` 与 `ReadProfile` 属于 `serverOnly`，仅档案页或档案接口构造；通用 REST 命令、手机/手表 WebSocket 与插件局域网直连拒绝。服务端复核班级身份、权限、目标所属班级与能力；插件在 UI 线程验证、应用、保存，失败回滚，成功后立即重新同步七日课表。班级级目标沿用最早接入的在线设备，具体设备逐台投递；各班不同内容按目标班级组装，离线及失败逐台返回且不排队。旧命令 17、18 的语义和管理员约束保留，不能用于回退模拟新命令；旧插件可以编辑服务器档案，下发需升级。
 
