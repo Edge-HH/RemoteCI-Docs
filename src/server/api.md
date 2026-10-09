@@ -271,7 +271,7 @@ Content-Type: application/json
 | `POST` | `/api/profiles/collect` | 请求体 `{"classIds":["…"]}`（1–100 个班级），读取各班在线设备的当前档案（含临时层），见下文；只返回，不保存 |
 | `POST` | `/api/profiles/apply` | 下发已保存的档案，见下文 |
 
-收集返回 `{success, message, results[]}`，每项含 `classId`、`className`、`deviceName`、`success`、`message`、`profileJson`（仅成功时）与 `errors`（仍需修正的校验问题）。结果已按 ClassIsland 规则对齐课程数并清除悬空指针；要保存时再调用 `PUT /api/profiles`（班级已有档案时带上其 `id` 与 `revision`）。离线班级返回“班级设备未在线”，插件缺少 `profile.read` 时提示升级。
+收集返回 `{success, message, results[]}`，每项含 `classId`、`className`、`deviceName`、`success`、`message`、`profileJson`（仅成功时）与 `errors`（仍需修正的校验问题）。结果已按 ClassIsland 规则对齐课程数并清除悬空指针；要保存时再调用 `PUT /api/profiles`（班级已有档案时带上其 `id` 与 `revision`）。离线班级返回“班级设备未在线”，插件缺少 `profile.read` 时提示升级；无权管理的班级逐班返回“没有管理此班级档案的权限”（不回显班级名），一个都不能管理时返回 403。
 
 下发请求体为 `{"items":[{"id":"…","revision":3}],"mode":1,"sections":7,"classIds":[],"groupIds":[],"connectionIds":[],"confirmReplace":false,"importProfileName":null,"restartAfter":false,"tempLayerIds":null,"replaceExistingTempLayers":false}`：
 
