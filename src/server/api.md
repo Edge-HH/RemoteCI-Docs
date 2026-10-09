@@ -256,15 +256,28 @@ Content-Type: application/json
 
 `values` 只需包含要修改的字段，未出现的字段保持设备当前值。服务端先按插件声明校验字段、类型、范围和必填，再把 `ApplyExtensionSettings` 命令发送到该班设备并等待回执，响应体与[单班级命令](#单班级命令)相同；该班插件离线时返回 `202` 与 `code: "QUEUED"`，设置已保存为待补发，插件上线后由服务端自动写入。系统管理员可修改任意班级；班主任需要系统管理员开启“修改本班的扩展插件设置”且在本班拥有“扩展功能”权限，否则返回 403。批量下发到多个班级请使用 WebUI 的“扩展插件”页。
 
-## 档案管理的 WebUI 边界
+## 服务端档案
 
-档案库与批量编辑使用独立的 Razor 页面，**没有对应的 REST 档案管理端点**。系统管理员在 `/Profiles` 管理全局模板和所有班级；班级菜单的 `/ClassProfiles` 只操作当前班级，要求系统管理员，或本班成员身份为班主任且拥有 `ManageSchedule`（值 16）。普通老师即使被授予值 16，也不能访问档案管理。
+档案库保存完整的 ClassIsland 档案 JSON：全局模板只有系统管理员可见；班级档案每班一份，系统管理员和本班班主任（且拥有 `ManageSchedule`，值 16）可以管理。WebUI 的 `/Profiles`、`/ClassProfiles` 页面与以下接口共用同一套服务端校验。
 
-页面用登录 Cookie 与防伪令牌调用 handlers：`Data` 读取、`Export` 导出，`Preview` 解析上传 JSON，`Save` 保存，`Copy` 复制模板，`Delete` 删除，`Apply` 下发。上传每份最大 5 MB，先预览再保存；保存请求携带档案修订号，批量保存先校验所有项，任一冲突整批不写入并保留客户端草稿。模板分配为独立班级副本，每班一份工作档案，服务端不读取或自动同步设备当前档案。
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/profiles` | 档案列表（不含 JSON）：管理员得到全部档案，班主任得到可管理班级的档案；可加 `?classId=` 只看一个班 |
+| `GET` | `/api/profiles/{id}` | 单份档案，含完整 `profileJson` |
+| `POST` | `/api/profiles/preview` | 请求体 `{"profileJson":"…"}`，返回解析结果与校验错误，不保存 |
+| `PUT` | `/api/profiles` | 批量保存，请求体 `{"items":[{"id":null,"classId":null,"sourceTemplateId":null,"name":"…","profileJson":"…","revision":0}]}`；修改时带上读到的 `id` 与 `revision`；一次最多 100 份，任一无效或冲突整批不写入 |
+| `POST` | `/api/profiles/{id}/copy` | 请求体 `{"revision":1,"name":"副本名"}`，复制全局模板；仅系统管理员 |
+| `DELETE` | `/api/profiles/{id}?revision=N` | 删除服务端档案，设备档案不受影响 |
+| `POST` | `/api/profiles/apply` | 下发已保存的档案，见下文 |
 
-`Apply` 只使用已经保存且修订号匹配的档案，可选择班级、分组或具体设备，班主任目标固定本班。每次明确选择“更新当前档案”“整体替换所选类别”或“创建并启用新档案”；整体替换需确认清空类别，创建时填写设备档案名。离线或失败逐台返回，不排队。
+下发请求体为 `{"items":[{"id":"…","revision":3}],"mode":1,"sections":7,"classIds":[],"groupIds":[],"connectionIds":[],"confirmReplace":false,"importProfileName":null,"restartAfter":false}`：
 
-页面生成 `25 ApplyProfile` 命令，要求 `profile.apply` 能力，属于 `serverOnly`：`POST /api/commands`、`POST /api/commands/broadcast`、手机/手表通用命令和局域网直连均拒绝。API Key 不能用于直接调用这些页面操作，脚本和 Agent 应引导有权用户进入 WebUI。旧命令 17、18 继续保留原有管理员 API 语义，但不会读写服务端档案库，也不模拟命令 25。
+- `mode` 必须显式选择：`1` 更新当前档案、`2` 整体替换所选类别（需 `confirmReplace: true`）、`3` 创建并启用新档案（需 `importProfileName`）。
+- `sections` 为位掩码：`1` 时间表、`2` 课表、`4` 科目。
+- 单份全局模板可下发到多个班级、分组或设备；班级档案只能下发到所属班级，且不能与模板混在同一批。
+- 返回 `{success, message, results[]}`，`results` 逐台设备报告结果；离线设备直接失败，不排队。
+
+修订号不匹配时返回 409 `PROFILE_STALE`，重新读取后再操作。下发会生成 `25 ApplyProfile` 命令（需要插件能力 `profile.apply`），该命令属于 `serverOnly`：`POST /api/commands`、广播、手机/手表通用命令和局域网直连都会拒绝，只能经档案页面或 `POST /api/profiles/apply` 下发。旧命令 17、18 保留原有管理员 API 语义，不读写服务端档案库。
 
 ## 发送命令
 
@@ -303,7 +316,7 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `22` | 远程终端 | 人员管理，且必须是系统管理员 |
 | `23` | 文件分发 | 人员管理，且必须是系统管理员 |
 | `24` | 修改扩展插件设置 | 不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置) |
-| `25` | 应用服务端档案 | 不能经此端点发送，请使用 [WebUI 档案管理](#档案管理的-webui-边界) |
+| `25` | 应用服务端档案 | 不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案) |
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
