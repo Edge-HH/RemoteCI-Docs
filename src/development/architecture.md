@@ -58,7 +58,7 @@ ClassIsland 插件 ── 局域网 WebSocket（HMAC 挑战认证）── Wear 
 | <code>connection_bootstrap</code> | 插件 → 手表 | 用户选中局域网插件后提供电脑名称与云服务器地址；不携带认证数据 |
 | <code>command</code> / <code>command_result</code> | 手表/服务端 → 插件 | 换课、通知、清除提醒、主界面、电源、音量、扩展、软件升级、插件管理、档案分发、时间表、集控、科目教师、远程终端与文件分发命令 |
 
-命令编号：1 换课、2 发送通知、3 清除提醒、4 主界面显隐、5 电源、6 音量、7 运行扩展、8（旧版协议保留）、9 发送语音、10 升级插件、11 升级 ClassIsland、12 刷新软件版本清单、13 安装插件、14 卸载插件、15 启用/禁用插件、16 设置远程插件管理策略、17 分发档案、18 更新时间表、19 加入集控、20 仅重启 ClassIsland、21 设置科目教师、22 远程终端、23 文件分发、24 修改扩展插件设置（只能由服务端 WebUI 或扩展设置 API 发起，局域网直连拒绝）、25 `ApplyProfile` 档案应用（只能由服务端 WebUI 档案页发起）。事件编号：1 上课、2 课间、3 放学、4 课表变更、5 自定义、6 自动化通知、7 第三方插件通知。
+命令编号：1 换课、2 发送通知、3 清除提醒、4 主界面显隐、5 电源、6 音量、7 运行扩展、8（旧版协议保留）、9 发送语音、10 升级插件、11 升级 ClassIsland、12 刷新软件版本清单、13 安装插件、14 卸载插件、15 启用/禁用插件、16 设置远程插件管理策略、17 分发档案、18 更新时间表、19 加入集控、20 仅重启 ClassIsland、21 设置科目教师、22 远程终端、23 文件分发、24 修改扩展插件设置（只能由服务端 WebUI 或扩展设置 API 发起，局域网直连拒绝）、25 `ApplyProfile` 档案应用、26 `ReadProfile` 读取设备档案（两者只能由服务端档案页或档案接口发起）。事件编号：1 上课、2 课间、3 放学、4 课表变更、5 自定义、6 自动化通知、7 第三方插件通知。
 
 `SendVoiceMessage` 的 `voiceMessage` 包含固定格式 `format: pcm_s16le_16000_mono` 和标准 Base64 的 `audioBase64`；录音为 16 kHz、16 位小端单声道 PCM，最多 60 秒（1,920,000 字节）。WebUI 使用带防伪头的二进制上传，服务端转成同一命令；手表使用已认证的云端或局域网 WebSocket。传输接收上限为 16 MiB，以容纳 JSON 转义的最坏情况，音频解码后仍执行严格大小校验。各接入端覆盖发送人，插件只使用认证身份。语音不持久化、不离线排队，已有浮窗返回 `BUSY`。Windows 播放器使用 NAudio/WASAPI；Avalonia 浮窗复用宿主 `popup-bg`、`TransparentButton`、原生 Slider 和 `FluentIcon`，并在 Windows 上检测浮窗外的鼠标按下以实现不抢焦点的轻触关闭；通知开启强调，关闭提示音和朗读。
 
@@ -72,11 +72,15 @@ SQLite／EF Core 保存完整 ClassIsland JSON、名称、修订号、来源模�
 
 草稿保留在浏览器，切换班级不丢弃；统一保存先验证全部草稿与预期修订号，再在一个数据库事务提交，任一冲突整批不写入。服务器保存与设备下发分开，离线可保存，发送使用已保存且修订号匹配的版本。全局模板仅系统管理员可访问；班级档案要求系统管理员，或目标班级成员身份为班主任且拥有 `ManageSchedule`。上传、保存、导出、删除和下发均重新鉴权。
 
-新增命令 `25 ApplyProfile` 与非基础能力 `profile.apply`。`profileApply` 载荷为 `ProfileApplyRequest { profileJson, sections, mode, importProfileName?, restartAfter }`，`sections` 为位掩码（1 时间表、2 课表、4 科目），`mode` 为 1 `MergeCurrent`、2 `ReplaceSections` 或 3 `CreateAndActivate`，每次发送必须明确选择。前两种更新当前档案，分别保留其他内容或清空所选类别；创建模式要求设备档案名，重名报错。选中对象的必要依赖随档案一起下发，合并后的悬空引用使操作失败。
+新增命令 `25 ApplyProfile` 与非基础能力 `profile.apply`。`profileApply` 载荷为 `ProfileApplyRequest { profileJson, sections, mode, importProfileName?, restartAfter, replaceExistingTempLayers }`，`sections` 为位掩码（1 时间表、2 课表、4 科目），`mode` 为 1 `MergeCurrent`、2 `ReplaceSections`、3 `CreateAndActivate` 或 4 `TempLayers`（另需能力 `profile.temp-layer`），每次发送必须明确选择。前两种更新当前档案，分别保留其他内容或清空所选类别；创建模式要求设备档案名，重名报错。选中对象的必要依赖随档案一起下发，合并后的悬空引用使操作失败。
 
-`ApplyProfile` 属于 `serverOnly`，仅档案页构造；通用 REST 命令、手机/手表 WebSocket 与插件局域网直连拒绝。服务端复核班级身份、权限、目标所属班级与能力；插件在 UI 线程验证、应用、保存，失败回滚，成功后立即重新同步七日课表。班级级目标沿用最早接入的在线设备，具体设备逐台投递；各班不同内容按目标班级组装，离线及失败逐台返回且不排队。旧命令 17、18 的语义和管理员约束保留，不能用于回退模拟新命令；旧插件可以编辑服务器档案，下发需升级。
+命令 `26 ReadProfile`（能力 `profile.read`）无载荷，插件在 UI 线程把当前内存档案序列化后放进 `CommandResult.data` 返回；服务端逐班校验权限后并发发送，按宿主 `RefreshClassesList` 规则对齐课程数并清除悬空指针，结果只作为浏览器草稿或 API 返回值，不写入档案库。
 
-档案库与班级副本纳入 schema 5 配置备份；旧备份缺少档案数据时按空库恢复。服务器不会读取、迁移或自动同步设备现有档案，设备本地修改也不会回写。
+临时层即 `IsOverlay=true` 的课表（及可选的临时层时间表），由 `OrderedSchedules[日期]` 指向。共享层 `ProfileDocument` 让常规选择跳过临时层，更新与整体替换后按宿主 `RefreshClassesList` 规则修复设备临时层（对齐课程数、缺失科目改空课、缺失课表群改默认），仅时间表不存在时移除；`BuildTempLayerSelection` 只打包所选临时层及其依赖，`ApplyTempLayers` 在插件端逐日写入：跳过过期日期，同日已有安排需明确替换，科目与课表群只补缺，时间表与设备不一致时写成临时层时间表副本，临时层课表用新 ID，并在当天生效时设置 `OverlayClassPlanId`。
+
+`ApplyProfile` 与 `ReadProfile` 属于 `serverOnly`，仅档案页或档案接口构造；通用 REST 命令、手机/手表 WebSocket 与插件局域网直连拒绝。服务端复核班级身份、权限、目标所属班级与能力；插件在 UI 线程验证、应用、保存，失败回滚，成功后立即重新同步七日课表。班级级目标沿用最早接入的在线设备，具体设备逐台投递；各班不同内容按目标班级组装，离线及失败逐台返回且不排队。旧命令 17、18 的语义和管理员约束保留，不能用于回退模拟新命令；旧插件可以编辑服务器档案，下发需升级。
+
+档案库与班级副本纳入 schema 5 配置备份；旧备份缺少档案数据时按空库恢复。服务器不会自动读取、迁移或同步设备现有档案，设备本地修改也不会回写；只有用户主动“从设备收集”时才读取。
 
 ## 身份与权限
 

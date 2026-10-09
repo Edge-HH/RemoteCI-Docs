@@ -268,16 +268,20 @@ Content-Type: application/json
 | `PUT` | `/api/profiles` | 批量保存，请求体 `{"items":[{"id":null,"classId":null,"sourceTemplateId":null,"name":"…","profileJson":"…","revision":0}]}`；修改时带上读到的 `id` 与 `revision`；一次最多 100 份，任一无效或冲突整批不写入 |
 | `POST` | `/api/profiles/{id}/copy` | 请求体 `{"revision":1,"name":"副本名"}`，复制全局模板；仅系统管理员 |
 | `DELETE` | `/api/profiles/{id}?revision=N` | 删除服务端档案，设备档案不受影响 |
+| `POST` | `/api/profiles/collect` | 请求体 `{"classIds":["…"]}`（1–100 个班级），读取各班在线设备的当前档案（含临时层），见下文；只返回，不保存 |
 | `POST` | `/api/profiles/apply` | 下发已保存的档案，见下文 |
 
-下发请求体为 `{"items":[{"id":"…","revision":3}],"mode":1,"sections":7,"classIds":[],"groupIds":[],"connectionIds":[],"confirmReplace":false,"importProfileName":null,"restartAfter":false}`：
+收集返回 `{success, message, results[]}`，每项含 `classId`、`className`、`deviceName`、`success`、`message`、`profileJson`（仅成功时）与 `errors`（仍需修正的校验问题）。结果已按 ClassIsland 规则对齐课程数并清除悬空指针；要保存时再调用 `PUT /api/profiles`（班级已有档案时带上其 `id` 与 `revision`）。离线班级返回“班级设备未在线”，插件缺少 `profile.read` 时提示升级。
 
-- `mode` 必须显式选择：`1` 更新当前档案、`2` 整体替换所选类别（需 `confirmReplace: true`）、`3` 创建并启用新档案（需 `importProfileName`）。
-- `sections` 为位掩码：`1` 时间表、`2` 课表、`4` 科目。
+下发请求体为 `{"items":[{"id":"…","revision":3}],"mode":1,"sections":7,"classIds":[],"groupIds":[],"connectionIds":[],"confirmReplace":false,"importProfileName":null,"restartAfter":false,"tempLayerIds":null,"replaceExistingTempLayers":false}`：
+
+- `mode` 必须显式选择：`1` 更新当前档案、`2` 整体替换所选类别（需 `confirmReplace: true`）、`3` 创建并启用新档案（需 `importProfileName`）、`4` 作为临时层下发。
+- `sections` 为位掩码：`1` 时间表、`2` 课表、`4` 科目；`mode: 4` 时不需要。`1`–`3` 只处理常规对象，不包含临时层。
+- `mode: 4` 只写入档案中按日期安排的临时层：`tempLayerIds` 指定临时层课表 ID（省略为全部，多份档案批量下发时忽略），已过期的由插件跳过；设备同一天已有临时层或预定课表时需 `replaceExistingTempLayers: true`，否则该设备失败并说明日期。档案中没有临时层时返回 400（批量时只让该班失败）。需要插件能力 `profile.temp-layer`。
 - 单份全局模板可下发到多个班级、分组或设备；班级档案只能下发到所属班级，且不能与模板混在同一批。
 - 返回 `{success, message, results[]}`，`results` 逐台设备报告结果；离线设备直接失败，不排队。
 
-修订号不匹配时返回 409 `PROFILE_STALE`，重新读取后再操作。下发会生成 `25 ApplyProfile` 命令（需要插件能力 `profile.apply`），该命令属于 `serverOnly`：`POST /api/commands`、广播、手机/手表通用命令和局域网直连都会拒绝，只能经档案页面或 `POST /api/profiles/apply` 下发。旧命令 17、18 保留原有管理员 API 语义，不读写服务端档案库。
+修订号不匹配时返回 409 `PROFILE_STALE`，重新读取后再操作。下发会生成 `25 ApplyProfile` 命令（需要插件能力 `profile.apply`），收集会生成 `26 ReadProfile` 命令（需要 `profile.read`），两者都属于 `serverOnly`：`POST /api/commands`、广播、手机/手表通用命令和局域网直连都会拒绝，只能经档案页面或上述档案接口发起。旧命令 17、18 保留原有管理员 API 语义，不读写服务端档案库。
 
 ## 发送命令
 
@@ -317,6 +321,7 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `23` | 文件分发 | 人员管理，且必须是系统管理员 |
 | `24` | 修改扩展插件设置 | 不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置) |
 | `25` | 应用服务端档案 | 不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案) |
+| `26` | 读取设备档案 | 不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案) |
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
