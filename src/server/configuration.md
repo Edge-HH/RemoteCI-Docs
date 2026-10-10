@@ -20,17 +20,17 @@ order: 2
 | JSON 键 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | <code>Server:DatabasePath</code> | <code>Server__DatabasePath</code> | <code>data/remoteci.db</code> | SQLite 数据库路径 |
-| <code>Server:BootstrapAdminUsername</code> | <code>Server__BootstrapAdminUsername</code> | <code>admin</code> | 首次启动创建的管理员用户名 |
-| <code>Server:BootstrapAdminPassword</code> | <code>Server__BootstrapAdminPassword</code> | 自动生成 | 首次启动管理员密码 |
-| <code>Server:BootstrapPluginPairCode</code> | <code>Server__BootstrapPluginPairCode</code> | 自动生成 | 首次启动插件配对码 |
+| <code>Server:BootstrapAdminUsername</code> | <code>Server__BootstrapAdminUsername</code> | <code>admin</code> | 预先创建系统管理员时使用的登录 ID |
+| <code>Server:BootstrapAdminPassword</code> | <code>Server__BootstrapAdminPassword</code> | 空 | 可选；设置后首次启动直接创建系统管理员，留空则在 WebUI 初始化向导中创建 |
+| <code>Server:BootstrapPluginPairCode</code> | <code>Server__BootstrapPluginPairCode</code> | 自动生成 | 首次启动插件引导配对码；用它接入的设备进入“未分配设备” |
 | <code>Server:AccessTokenTtl</code> | <code>Server__AccessTokenTtl</code> | <code>01:00:00</code> | 短期访问令牌有效期 |
 | <code>Server:DeviceSessionTtl</code> | <code>Server__DeviceSessionTtl</code> | <code>30.00:00:00</code> | 设备会话有效期 |
 | <code>Server:ConnectionAuthorizationRefreshInterval</code> | <code>Server__ConnectionAuthorizationRefreshInterval</code> | <code>00:01:00</code> | 在线 WebSocket 持久化授权状态的兜底复查周期 |
 
 另有两个优先级更高、便于容器首次启动的环境变量：
 
-- <code>REMOTECI_ADMIN_PASSWORD</code>：首次管理员密码。
-- <code>REMOTECI_PLUGIN_PAIR_CODE</code>：首次一次性插件配对码。
+- <code>REMOTECI_ADMIN_PASSWORD</code>：可选，预先创建系统管理员的密码（适合无人值守部署）；留空时首次打开 WebUI 会进入初始化向导。
+- <code>REMOTECI_PLUGIN_PAIR_CODE</code>：可选，插件引导配对码。用它接入的设备会进入“班级管理 → 未分配设备”，需要分配到班级；日常请在 WebUI 为每个班级生成配对码。
 
 这些初始值只在数据库中没有对应数据时使用。修改已经运行过的容器环境变量，不会覆盖现有管理员密码或重新生成插件凭据。
 

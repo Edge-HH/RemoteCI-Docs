@@ -201,7 +201,7 @@ POST /api/me/display-name
 GET /api/state?classId={classId}
 ~~~
 
-`classId` 可省略，此时服务端使用默认班级或账号的第一个可访问班级。账号必须能访问目标班级，否则返回 `403`。
+`classId` 可省略，此时服务端使用账号的第一个可访问班级（服务端没有默认班级）。账号必须能访问目标班级，否则返回 `403`。
 
 ### 获取七日课表
 
@@ -384,9 +384,23 @@ POST /api/commands/broadcast
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `PUT` | `/api/classes/{id}/info` | 修改班级名称 |
-| `PUT` | `/api/classes/{id}/avatar` | 上传班级头像，原始二进制请求体，最大 256 KB |
-| `DELETE` | `/api/classes/{id}/avatar` | 删除班级头像 |
+| `PUT` | `/api/classes/{id}/info` | 修改班级名称，请求体 `{"name":"高一(4)班"}` |
+| `PUT` | `/api/classes/{id}/avatar` | 上传班级头像，原始二进制请求体，加请求头 `X-Avatar-Type: image/png`（或 `image/jpeg`、`image/webp`），最大 256 KB |
+| `DELETE` | `/api/classes/{id}/avatar` | 删除班级头像；未设置头像的班级在各端显示默认班级图标 |
+| `GET` | `/api/classes/{id}/avatar` | 读取班级头像（无需登录），未设置时返回 404 |
+
+AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接口。
+
+## 首次部署
+
+全新部署没有任何账号和班级。以下两个接口无需登录：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/setup` | 返回 `{"needsSystemAdmin":true,"needsFirstClass":true}` |
+| `POST` | `/api/setup/system-admin` | 请求体 `{"username":"admin","displayName":"系统管理员","password":"…"}`；只在还没有任何账号时可用（之后返回 403），成功后返回与登录相同的令牌 |
+
+创建系统管理员后，用返回的令牌调用 `POST /api/classes` 新建第一个班级。系统管理员在 `GET /api/users` 中的 `isSystemOwner` 为 `true`，其他账号修改、重置密码或删除它都会返回 403。
 
 ## 管理、设置与维护接口
 
@@ -397,10 +411,10 @@ POST /api/commands/broadcast
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/users` | 列出账号 |
-| `POST` | `/api/users` | 创建账号 |
+| `POST` | `/api/users` | 创建账号；可选 `classId` 让账号以同一角色加入该班，省略则不加入任何班级 |
 | `PUT` | `/api/users/{id}` | 修改显示名、角色、启用状态和权限 |
 | `POST` | `/api/users/{id}/password` | 重置密码 |
-| `DELETE` | `/api/users/{id}` | 删除账号 |
+| `DELETE` | `/api/users/{id}` | 删除账号；系统管理员账号不能删除 |
 | `POST` | `/api/users/batch-import` | 文本批量导入账号 |
 
 ### 角色
@@ -435,7 +449,7 @@ POST /api/commands/broadcast
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `POST` | `/api/plugin/pairing-code` | 创建插件配对码 |
+| `POST` | `/api/plugin/pairing-code` | 创建插件配对码；一次性码和固定码必须指定 `classId`，`{"unified":true}` 为统一连接码 |
 | `GET` | `/api/plugins/credentials` | 列出插件长期凭据 |
 | `DELETE` | `/api/plugins/credentials/{id}` | 吊销插件凭据 |
 | `GET` | `/api/visitor` | 读取访客自动进入设置 |

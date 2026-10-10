@@ -25,16 +25,16 @@ Docker 是当前最直接的部署方式。RemoteCI 服务端使用 ASP.NET Core
 
 - 只把 <code>127.0.0.1:8080</code> 暴露给宿主机。
 - 把 SQLite 保存在命名卷 <code>remoteci-data</code>，删除容器不会丢数据。
-- 从 <code>.env</code> 或环境变量读取 <code>REMOTECI_ADMIN_PASSWORD</code> 与 <code>REMOTECI_PLUGIN_PAIR_CODE</code>。
+- 从 <code>.env</code> 或环境变量读取可选的 <code>REMOTECI_ADMIN_PASSWORD</code> 与 <code>REMOTECI_PLUGIN_PAIR_CODE</code>。
 
-在同目录创建不提交到 Git 的 <code>.env</code>：
+两个变量通常都不需要设置：首次打开 WebUI 时，初始化向导会让你创建系统管理员并新建第一个班级。无人值守部署可以在同目录创建不提交到 Git 的 <code>.env</code> 预先提供：
 
 ~~~dotenv
+# 可选：预先创建登录 ID 为 admin 的系统管理员
 REMOTECI_ADMIN_PASSWORD=请替换为至少8位的强密码
+# 可选：插件引导配对码，接入的设备进入“未分配设备”
 REMOTECI_PLUGIN_PAIR_CODE=请替换为一次性随机配对码
 ~~~
-
-两个变量都可以省略；缺省时服务端会各生成一个随机值并只在首次启动日志中显示。
 
 构建镜像并启动：
 
@@ -61,7 +61,7 @@ Dockerfile 会同时复制 <code>shared</code> 和 <code>server</code>，因此�
 Invoke-RestMethod http://127.0.0.1:8080/api/health
 ~~~
 
-正常响应应包含 <code>status</code> 与 <code>protocolVersion</code>。随后打开服务端页面，使用管理员账号登录并立即修改初始密码。
+正常响应应包含 <code>status</code> 与 <code>protocolVersion</code>。随后打开服务端页面，按初始化向导创建系统管理员并新建第一个班级。
 
 ## 配置 HTTPS
 
