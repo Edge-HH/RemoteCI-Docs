@@ -105,7 +105,7 @@ SQLite／EF Core 保存完整 ClassIsland JSON、名称、修订号、来源模�
 
 云端 WebSocket 只在握手时完整查询令牌，连接对象缓存插件凭据 ID、设备会话 ID、有效权限和访问令牌到期时间。普通 `state_push`、广播和命令转发不逐条访问 SQLite；凭据或设备会话吊销、改密、账号禁用和权限修改通过连接注册表主动失效，后台默认每分钟再做一次持久化授权兜底复查。
 
-云端与局域网认证成功时，<code>auth_state.serverVersion</code> 都会携带当前 WebUI 软件版本；局域网值来自 <code>account_sync.serverVersion</code>。该版本用于诊断，不作为连接或手表更新上限。服务端和手表正式渠道只选择协议主版本相同的四段纯数字 Release，Beta 渠道额外选择 v3.x.x-beta.y，V4 需要协调升级。
+云端与局域网认证成功时，<code>auth_state.serverVersion</code> 都会携带当前 WebUI 软件版本；局域网值来自 <code>account_sync.serverVersion</code>。该版本用于诊断，不作为连接或手表更新上限。服务端和手表正式渠道只选择协议主版本相同的四段纯数字 Release，Beta 渠道额外选择 v3.x.x-beta.y及在 GitHub 标为预发布的四段 Release，V4 需要协调升级。
 
 WebUI 的有效能力是“服务端 ∩ 当前主插件”，手表的有效能力是“手表本地 ∩ 服务端 ∩ 当前主插件”。未上报能力的旧 V3 端回退到 V3 基础能力（该基线自 3.1.0 引入），未知能力安全忽略。当前主插件为最早接入的健康插件；主插件切换或能力变化时重新广播快照。能力只控制入口和转发兼容性，账号权限与扩展策略仍独立校验。
 

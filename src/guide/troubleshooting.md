@@ -134,7 +134,7 @@ WebUI 检测到 ClassIsland 插件发送的协议号不是整数 `3` 时，会�
 - 正式版渠道不会显示 GitHub 预发布；需要测试预发布时切换到 Beta 渠道，Beta 渠道仍会包含正式版。
 - “强制更新”只用于重新下载并覆盖当前版本，不能安装更低版本，也不会跳过平台包、包内版本或 APK 签名检查。
 - Visual Studio 调试或 <code>dotnet run</code> 使用 Development 环境时，WebUI 会提示由开发工具管理并禁用在线更新；修改源码后应停止旧进程并重新构建/启动。若曾用旧版更新器在源码目录拉起 release，请先结束命令行为项目目录下 <code>RemoteCI.Server.dll</code> 的孤立 <code>dotnet</code> 进程，再从 IDE 重新启动。
-- 手表更新失败时，先确认已连接 WebUI、目标 APK 来自四段纯数字稳定 Release 或 `v3.x.x-beta.y` Beta Release，且不低于当前手表版本，并确认新 APK 与当前安装包签名一致；首次安装正式签名版后，后续更新才能在同一签名下覆盖。旧三段 `v3.x.x` 稳定标签不会作为新候选，V4 也不会显示为 V3 手表的自动更新候选。
+- 手表更新失败时，先确认已连接 WebUI、目标 APK 来自四段纯数字稳定 Release、`v3.x.x-beta.y` Beta Release 或 Beta 渠道下标为预发布的四段 Release，且不低于当前手表版本，并确认新 APK 与当前安装包签名一致；首次安装正式签名版后，后续更新才能在同一签名下覆盖。旧三段 `v3.x.x` 稳定标签不会作为新候选，V4 也不会显示为 V3 手表的自动更新候选。
 - 旧 `v3.2.0` 安装不会自动发现首个实际发布的四段稳定版本 `3.2.1.2`；首次硬切迁移请手动安装对应服务端或 FPK、`RemoteCI.Plugin.cipx` 和 `RemoteCI.Watch-3.2.1.2.apk`。
 - 飞牛 fnOS 不在 WebUI 内更新，请从 GitHub Release 下载新版本在线或对应架构离线 FPK，再到 fnOS 应用中心手动升级。
 

@@ -238,12 +238,13 @@ GET /api/extension-groups?classId={classId}
     ],
     "values": { "interval": "10" },
     "canEditSettings": true,
+    "allowClassAdmin": false,
     "classId": "33333333-3333-3333-3333-333333333333"
   }
 ]
 ~~~
 
-`values` 只对可以修改该班扩展设置的账号返回，其他账号为 `null`。
+`values` 只对可以修改该班该插件设置的账号返回，其他账号为 `null`；`allowClassAdmin` 表示该插件是否已开放给班主任自行管理。
 
 ### 修改扩展插件设置
 
@@ -254,7 +255,18 @@ Content-Type: application/json
 { "values": { "interval": "15" } }
 ~~~
 
-`values` 只需包含要修改的字段，未出现的字段保持设备当前值。服务端先按插件声明校验字段、类型、范围和必填，再把 `ApplyExtensionSettings` 命令发送到该班设备并等待回执，响应体与[单班级命令](#单班级命令)相同；该班插件离线时返回 `202` 与 `code: "QUEUED"`，设置已保存为待补发，插件上线后由服务端自动写入。系统管理员可修改任意班级；班主任需要系统管理员开启“修改本班的扩展插件设置”且在本班拥有“扩展功能”权限，否则返回 403。批量下发到多个班级请使用 WebUI 的“扩展插件”页。
+`values` 只需包含要修改的字段，未出现的字段保持设备当前值。服务端先按插件声明校验字段、类型、范围和必填，再把 `ApplyExtensionSettings` 命令发送到该班设备并等待回执，响应体与[单班级命令](#单班级命令)相同；该班插件离线时返回 `202` 与 `code: "QUEUED"`，设置已保存为待补发，插件上线后由服务端自动写入。系统管理员可修改任意班级；班主任只能修改已开放给班级自行管理的插件，且需要在本班拥有“扩展功能”权限，否则返回 403。批量下发到多个班级请使用 WebUI 的“扩展插件”页。
+
+### 开放插件给班级自行管理
+
+~~~http
+PUT /api/extension-groups/{groupId}/class-admin-access
+Content-Type: application/json
+
+{ "allowClassAdmin": true }
+~~~
+
+仅系统管理员可调用，返回 `{"groupId":"myplugin","allowClassAdmin":true}`。开关按插件设置、对全部班级生效，插件尚未上报时也可以先设置；新插件默认不开放。开放后，班主任的 WebUI 侧栏出现“扩展插件”入口，只列出已开放的插件，并可修改本班设置；`false` 收回后，该插件只由系统管理员统一管理。
 
 ## 服务端档案
 
@@ -433,7 +445,7 @@ POST /api/commands/broadcast
 | `GET` | `/api/settings/schedule-pull` | 读取自动拉取课表周期 |
 | `PUT` | `/api/settings/schedule-pull` | 修改自动拉取课表周期；全局设置，仅系统管理员 |
 | `GET` | `/api/settings/class-self-service` | 读取班主任权限（班级自治策略）；任何登录账号可读 |
-| `PUT` | `/api/settings/class-self-service` | 修改班主任权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true,"canEditExtensionSettings":false}`；仅系统管理员 |
+| `PUT` | `/api/settings/class-self-service` | 修改班主任权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`；仅系统管理员。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |
 | `GET` | `/api/admin/system` | 读取当前版本与自更新状态 |
 | `POST` | `/api/admin/updates/check` | 检查更新 |
