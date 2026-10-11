@@ -508,6 +508,7 @@ public override string? Icon => "broadcast_on_home";
 | `Number` | 数字输入 |
 | `Switch` | 开关（值为 `"true"` / `"false"`） |
 | `Select` | 候选项循环切换（需提供 `Options`） |
+| `Color` | WebUI：取色器 + 透明度滑块 + 十六进制输入 + 色卡；手表与旧版服务端按文本处理 |
 
 交互细节：
 
@@ -524,7 +525,7 @@ public override string? Icon => "broadcast_on_home";
 | --- | --- |
 | `Key` | 参数键，`extensionArgs` / 设置值字典中的键；分组内必须唯一 |
 | `Label` | 显示名称；为空时显示 `Key` |
-| `Type` | `Text`、`Number`、`Switch`、`Select` |
+| `Type` | `Text`、`Number`、`Switch`、`Select`、`Color` |
 | `DefaultValue` | 执行参数的默认值；设置页优先显示设备当前值 |
 | `Required` | 必填；执行时不能缺失，修改设置时不能清空 |
 | `Options` | `Select` 的候选值（提交给插件的原始值） |
@@ -533,14 +534,50 @@ public override string? Icon => "broadcast_on_home";
 | `Placeholder` | 输入框占位提示（`Text` / `Number`） |
 | `Multiline` | `Text` 在 WebUI 与手机中使用多行输入框；手表仍为单行 |
 | `Min` / `Max` | `Number` 的取值范围（含边界） |
+| `Step` | `Number` 的步长（只影响输入控件，不参与校验） |
+| `Slider` | `Number` 在 WebUI 同时显示滑块（需同时声明 `Min` 与 `Max`） |
+| `Section` | 设置页分区标题（见下文“复刻插件设置页”） |
+| `Card` / `CardDescription` | 设置卡片标题与说明 |
+| `CardToggle` | `Switch` 字段放在卡片标题行，作为卡片总开关 |
+| `VisibleWhen` / `EnabledWhen` | 联动条件：满足才显示 / 才可编辑 |
 
 服务端预检和插件执行端使用同一套校验规则，不通过时直接返回 `INVALID_REQUEST`，不会调用你的回调：
 
 - `Number` 必须能按不区分区域的格式解析为数字，并落在 `Min` / `Max` 范围内；
 - `Switch` 只接受 `true` / `false`（不区分大小写，传给你的值统一为小写）；
 - `Select` 必须是 `Options` 中的某一项；
+- `Color` 必须是 `#RGB`、`#ARGB`、`#RRGGBB` 或 `#AARRGGBB`（可用 `ExtensionColor.Normalize` 统一为 `#AARRGGBB`）；
 - 单个值不超过 4096 个字符；
 - 执行参数中未声明的键会原样透传，便于兼容按自定义键读取参数的旧扩展；设置中未声明的键会被拒绝。
+
+### 复刻插件设置页（分区、卡片与联动）
+
+设置字段较多时，可以让 WebUI 的插件设置页与你在 ClassIsland 里的设置页保持同样的结构：按声明顺序，连续相同 `Section` 的字段归为一个分区（显示分区标题），分区内连续相同 `Card` 的字段归为一张可折叠的设置卡片；没有 `Card` 的字段单独成行。卡片里第一个 `CardToggle = true` 的开关会放到卡片标题行。
+
+`VisibleWhen` / `EnabledWhen` 是 `ExtensionFieldCondition` 列表，全部满足才显示 / 才可编辑，WebUI 在表单变化时实时重算：
+
+| 字段 | 说明 |
+| --- | --- |
+| `Key` | 引用同一表单内另一个字段 |
+| `Values` | 该字段当前值属于其中之一即满足（数字按数值比较，其余不区分大小写） |
+| `Not` | 取反 |
+
+```csharp
+new ExtensionParameter { Key = "shadow", Label = "阴影", Type = ExtensionParameterType.Switch,
+    Section = "边框与阴影", Card = "阴影", CardDescription = "为主界面添加投影", CardToggle = true },
+new ExtensionParameter { Key = "shadowColor", Label = "阴影颜色", Type = ExtensionParameterType.Color,
+    Section = "边框与阴影", Card = "阴影",
+    EnabledWhen = [new ExtensionFieldCondition { Key = "shadow", Values = ["true"] }] },
+new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Type = ExtensionParameterType.Number,
+    Section = "边框与阴影", Card = "阴影", Min = 0, Max = 1, Step = 0.05, Slider = true,
+    EnabledWhen = [new ExtensionFieldCondition { Key = "shadow", Values = ["true"] }] },
+```
+
+注意：
+
+- 卡片总开关只决定摆放位置，卡片内条目是否随开关置灰要在各条目的 `EnabledWhen` 里显式声明（有的设置组开关并不禁用组内条目）。
+- 隐藏或置灰的字段仍按当前值提交，不会被清空；卡片内字段全部隐藏时整张卡片隐藏。
+- 这些都是可选的布局提示，旧版服务端忽略后退回平铺表单。如果你的插件需要兼容尚未升级的 RemoteCI，先用反射确认 `ExtensionParameter` 存在 `Section` 等属性再赋值，否则在旧版上会抛 `MissingMethodException`；不支持时可把卡片名拼进 `Label`（如“阴影 · 阴影颜色”），颜色改用 `Text`。
 
 ## 安全边界
 

@@ -371,7 +371,7 @@ WebUI 与手表共用同一套命令、权限和插件真实回执：
 
 ## 更新
 
-- 服务端：管理员在“系统配置 → 系统更新”选择正式版或 Beta 渠道；正式版排除预发布，Beta 同时包含正式版和预发布；更新说明按 GitHub Markdown 渲染。强制更新可重新下载并覆盖同一版本，但不允许降级；Windows、Linux 与 Docker 会按各自安全流程替换实际程序集目录并自动重启。Development 环境由 Visual Studio 或 <code>dotnet build</code> 管理，WebUI 不提供覆盖更新入口。
+- 服务端：管理员在“系统配置 → 系统更新”选择正式版或 Beta 渠道；正式版排除预发布，Beta 同时包含正式版和预发布；更新说明按 GitHub Markdown 渲染。强制更新可重新下载并覆盖同一版本，但不允许降级；Windows、Linux 与 Docker 会按各自安全流程替换实际程序集目录并自动重启。调试时可在同一面板“手动上传更新包（调试）”上传当前平台的服务端发布包 zip，允许同版本覆盖和降级，详见[运维](../server/operations.md)。Development 环境由 Visual Studio 或 <code>dotnet build</code> 管理，WebUI 不提供覆盖更新入口。
 - 手机：打开 App 时会自动检查更新（至少间隔 6 小时，按“账号与设置 → 更新”选择的正式版或 Beta 渠道），发现更高版本时弹窗显示版本号和更新说明，可以“立即更新”（下载后由系统安装器完成安装）、“稍后”或“跳过此版本”；跳过后更高的新版本仍会提示。“更新”页可以关闭自动检查、恢复已跳过的版本提示，也可以手动检查。网络失败时静默忽略。
 - 手表：在“设置 → 更新”选择正式版或 Beta 渠道，设置会保存在本机。强制更新可重新下载并覆盖同一版本，但不能降级；必须先连接 WebUI，正式版只选择协议主版本相同的四段纯数字 Release，Beta 额外包含 `v3.x.x-beta.y`及在 GitHub 标为预发布的四段 Release，V4 不进入自动更新候选。安装确认回调使用 Android PackageInstaller 的可变显式 PendingIntent。
 - 插件：升级由 ClassIsland 插件市场统一管理；稳定版使用同一个四段纯数字 Release，固定资产名为 `RemoteCI.Plugin.cipx`，Release 正文包含与资产同名的 `CLASSISLAND_PKG_MD5` 标记；`v3.x.x-beta.y` 只用于三端测试，不进入市场。

@@ -464,6 +464,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |
 | `GET` | `/api/admin/system` | 读取当前版本与自更新状态 |
 | `POST` | `/api/admin/updates/check` | 检查更新 |
+| `POST` | `/api/admin/updates/upload` | 调试用：请求体为当前平台服务端发布包 zip（`Content-Type: application/zip`，上限 512MB），安装后返回 `202` 与 `{"version":"…","mode":"…"}` 并自动重启；不校验 SHA-256，允许同版本覆盖和降级 |
 | `GET` | `/api/admin/backups` | 列出备份 |
 | `POST` | `/api/admin/backups` | 创建备份 |
 | `DELETE` | `/api/admin/backups/{name}` | 删除备份 |
