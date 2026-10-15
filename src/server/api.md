@@ -104,7 +104,7 @@ GET /api/me/classes
 GET /api/me/schedule
 ~~~
 
-只对“老师”和“班主任”角色生效：按账号的用户名匹配各班课表中的教师名，返回跨班级聚合的日程 `{ fromDate, generatedAt, days[] }`；每天的 `items[]` 按班级分组，包含 `classId`、`className` 和按节次排序的 `courses[]`。其他角色的账号或没有匹配课程时 `days` 为空数组。
+只对“老师”和“班主任”角色生效：按账号的用户名匹配各班课表中的教师名，返回跨班级聚合的日程 `{ fromDate, generatedAt, days[] }`；每天的 `items[]` 按班级分组，包含 `classId`、`className` 和按节次排序的 `courses[]`。插件从未同步过课表的班级按该班当前档案推算，对应的 `items[]` 带 `"source": "profile"`。其他角色的账号或没有匹配课程时 `days` 为空数组。
 
 ### 获取下一节课
 
@@ -112,7 +112,7 @@ GET /api/me/schedule
 GET /api/me/schedule/next?at={ISO 8601 时间}
 ~~~
 
-返回老师或班主任在指定时刻正在上的课 `current` 和接下来的第一节课 `next`，没有时省略对应字段；`at` 可省略，默认取服务端当前时间。
+返回老师或班主任在指定时刻正在上的课 `current` 和接下来的第一节课 `next`，没有时省略对应字段；`at` 可省略，默认取服务端当前时间。来自档案推算班级的课程带 `"source": "profile"`。
 
 ~~~json
 {
@@ -210,7 +210,7 @@ GET /api/state?classId={classId}
 GET /api/schedule?classId={classId}
 ~~~
 
-返回目标班级最近一次同步的课表。尚未收到课表时返回 `404`。
+返回目标班级最近一次同步的课表；插件离线时仍返回最后一次上线时同步的数据。插件从未同步过课表而本班保存了班级档案时，返回按该档案推算的七日课表，并带 `"source": "profile"`；这类课表只供查看，其中的 `revision` 不能用于向插件提交换课。插件同步的课表不带 `source` 字段。既没有课表也没有班级档案时返回 `404`。
 
 ### 获取扩展功能
 
@@ -412,7 +412,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/users` | 列出账号 |
-| `POST` | `/api/users` | 创建账号；可选 `classId` 让账号以同一角色加入该班，省略则不加入任何班级 |
+| `POST` | `/api/users` | 创建账号；可选 `classId` 让账号以同一角色加入该班，省略则不加入任何班级。`password` 可留空，账号首次以空密码调用 `POST /api/auth/login` 时返回 `passwordPending` 与一次性 `setupToken`，再调用 `POST /api/auth/setup-password` 设置密码 |
 | `PUT` | `/api/users/{id}` | 修改显示名、角色、启用状态和权限 |
 | `POST` | `/api/users/{id}/password` | 重置密码 |
 | `DELETE` | `/api/users/{id}` | 删除账号；系统管理员账号不能删除 |
