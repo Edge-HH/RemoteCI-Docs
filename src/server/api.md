@@ -104,15 +104,15 @@ GET /api/me/classes
 GET /api/me/schedule
 ~~~
 
-只对“老师”和“班主任”角色生效：按账号的用户名匹配各班课表中的教师名，返回跨班级聚合的日程 `{ fromDate, generatedAt, days[] }`；每天的 `items[]` 按班级分组，包含 `classId`、`className` 和按节次排序的 `courses[]`。插件从未同步过课表的班级按该班当前档案推算，对应的 `items[]` 带 `"source": "profile"`。其他角色的账号或没有匹配课程时 `days` 为空数组。
+返回当前账号的日程 `{ fromDate, generatedAt, days[] }`，包含本人的自定义课程；“老师”和“班主任”还会按显示名匹配各班课表中的教师名，聚合任教课程。每天的 `items[]` 包含 `classId`、`className` 和 `courses[]`。插件从未同步过课表的班级按该班当前档案推算，对应的 `items[]` 带 `"source": "profile"`；自定义课程带 `"source": "personal"`。没有任教课程且没有自定义课程时 `days` 为空数组。可选参数 `timeZoneOffsetMinutes` 见下一节。
 
 ### 获取下一节课
 
 ~~~http
-GET /api/me/schedule/next?at={ISO 8601 时间}
+GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 ~~~
 
-返回老师或班主任在指定时刻正在上的课 `current` 和接下来的第一节课 `next`，没有时省略对应字段；`at` 可省略，默认取服务端当前时间。来自档案推算班级的课程带 `"source": "profile"`。
+返回当前账号在指定时刻正在上的课 `current` 和接下来的第一节课 `next`，包含自定义课程及老师、班主任的任教课程，没有时省略对应字段；`at` 可省略，默认取服务端当前时间。来自档案推算班级的课程带 `"source": "profile"`。`next` 可能在之后几天，客户端自行判断是否“即将上课”。
 
 ~~~json
 {
@@ -128,7 +128,30 @@ GET /api/me/schedule/next?at={ISO 8601 时间}
 }
 ~~~
 
-`course.startTime`/`endTime` 是教室电脑的本地钟点；`startsAt`/`endsAt` 是按该班教室电脑时区换算出的绝对时间。
+`course.startTime`/`endTime` 是教室电脑的本地钟点；`startsAt`/`endsAt` 是按该班教室电脑时区换算出的绝对时间：优先用该班插件上报的时区；该班从未连接插件（按档案推算）时用任一班级插件上报的时区；还没有任何插件上报过时区时，用可选参数 `timeZoneOffsetMinutes`（调用方本机的 UTC 偏移分钟数，-840～840，例如东八区为 `480`；超出范围返回 400），都没有才退回服务端时区。Docker 部署的服务端默认是 UTC，脚本调用时建议带上该参数；手机 App 会自动携带。
+
+### 管理自定义课程
+
+所有已登录账号都可管理自己的单次课程，设备令牌与用户 API Key 均可调用，API Key 仍需账号具备 API 访问权限。数据按认证账号隔离，不接受账号或班级参数。
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET /api/me/schedule/courses` | 按开始时间列出本人课程 |
+| `POST /api/me/schedule/courses` | 新建课程 |
+| `PUT /api/me/schedule/courses/{id}` | 完整替换课程，先查询并保留未修改字段 |
+| `DELETE /api/me/schedule/courses/{id}` | 删除课程，成功返回 204 |
+
+创建或修改的请求体：
+
+~~~json
+{"subject":"自习","location":"图书馆","startsAt":"2026-10-18T14:00:00+08:00","endsAt":"2026-10-18T15:00:00+08:00","reminderMinutes":20,"notifyAtStart":true}
+~~~
+
+名称为 1–100 字，地点最多 200 字；起止时间使用含时区偏移的 ISO 8601，结束晚于开始且时长不超过 24 小时，支持跨午夜。`reminderMinutes` 为 1–10080 分钟，null 或省略表示关闭课前提醒；`notifyAtStart` 默认 true。响应包含这些字段和稳定的课程 `id`。操作他人的编号与不存在的编号均返回 404。
+
+合并日程的自定义条目带 `source: "personal"`，`classId` 为全零 GUID，`className` 为地点或“自定义课程”，不代表真实班级，也不可用于换课。通过 `courses[].personalCourseId` 识别课程，课程还带绝对时间 `startsAt`、`endsAt` 和提醒设置。自定义课程不受班级节假日停课影响。
+
+服务端约每 15 秒检查提醒，生成 `personal_course_upcoming`、`personal_course_start` 个人通知；上课提醒可在开始后 5 分钟内补发，发送记录持久保存以避免重启后重复生成。客户端通过个人通知接收提醒，不应独立重复生成同类提醒。
 
 ### 换课申请与个人通知
 
