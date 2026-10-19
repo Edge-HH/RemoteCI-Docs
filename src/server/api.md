@@ -169,10 +169,13 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 | `POST /api/swap-requests/{id}/revoke` | 对方老师撤回强制换课 |
 | `GET /api/me/notifications?after=&unread=true` | 个人通知列表 |
 | `POST /api/me/notifications/read` | 标记已读：`{ids:[…]}` 或 `{all:true}` |
+| `POST /api/me/action-links` | 为聊天卡片按钮签发一次性确认链接：`{action, targetId}`，`action` 为 `swap.approve`、`swap.reject` 或 `swap.revoke`，返回 `{url, path, expiresAt}` |
 
 - **`mode`**：`1` 互换，`source`、`target` 各是一节课 `{classId, date, index}`；`2` 替换，只填 `target` 与 `subjectName`。
 - **`{id}`**：也接受响应中的 8 位 `shortId`。
 - **`status`**：`1` 待审批、`2` 已通过、`3` 已拒绝、`4` 已撤销、`5` 已过期、`6` 已强制、`7` 已撤回。
+- **确认链接**：只有当前账号确实能执行该动作时才签发（否则 400）。链接 24 小时有效、只能成功使用一次；打开只显示确认页，点确认才执行，聊天软件预览链接不会误操作；执行失败（例如教室电脑离线）时链接恢复可用。
+- **个人通知**：部分通知带 `classId` 与 `link`（站内路径，如 `/Devices`）。新增种类 `device_offline`、`device_online`、`automation_failed`。
 - **错误码**：`SWAP_NOT_OWN`（两节都不是自己的课）、`SWAP_SUBJECT_MISSING`（目标班没有该学科）、`SWAP_SLOT_CHANGED`（课位已被调整）、`SWAP_STATE_CONFLICT`（申请已被处理）、`SWAP_FORCE_LOCKED`（当天这节课的强制换课已被撤回）。
 
 发起互换申请的示例：
@@ -306,6 +309,11 @@ Content-Type: application/json
 | `DELETE` | `/api/profiles/{id}?revision=N` | 删除服务端档案，设备档案不受影响 |
 | `POST` | `/api/profiles/collect` | 请求体 `{"classIds":["…"]}`（1–100 个班级），读取各班在线设备的当前档案（含临时层），见下文；只返回，不保存 |
 | `POST` | `/api/profiles/apply` | 下发已保存的档案，见下文 |
+| `GET` | `/api/profiles/{id}/versions` | 版本历史（每份保留最近 50 个），每项含 `revision`、`savedByName`、`savedAt`、`changeCount`、`isCurrent` |
+| `GET` | `/api/profiles/{id}/versions/{revision}/diff?against=previous\|current` | 该版本与上一版本或当前内容的差异 `changes[]`（`{category, text}`） |
+| `POST` | `/api/profiles/{id}/versions/{revision}/restore` | 请求体 `{"revision": 当前修订号}`，把历史版本另存为新版本 |
+| `POST` | `/api/profiles/drift` | 请求体 `{"classIds":["…"]}`，读取教室电脑当前档案并与服务端班级档案比较（不含临时层） |
+| `GET` | `/api/profiles/drift` | 可管理班级的最新设备差异结果 |
 
 收集返回 `{success, message, results[]}`，每项含 `classId`、`className`、`deviceName`、`success`、`message`、`profileJson`（仅成功时）与 `errors`（仍需修正的校验问题）。结果已按 ClassIsland 规则对齐课程数并清除悬空指针；要保存时再调用 `PUT /api/profiles`（班级已有档案时带上其 `id` 与 `revision`）。离线班级返回“班级设备未在线”，插件缺少 `profile.read` 时提示升级；无权管理的班级逐班返回“没有管理此班级档案的权限”（不回显班级名），一个都不能管理时返回 403。
 
@@ -425,6 +433,41 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | `POST` | `/api/setup/system-admin` | 请求体 `{"username":"admin","displayName":"系统管理员","password":"…"}`；只在还没有任何账号时可用（之后返回 403），成功后返回与登录相同的令牌 |
 
 创建系统管理员后，用返回的令牌调用 `POST /api/classes` 新建第一个班级。系统管理员在 `GET /api/users` 中的 `isSystemOwner` 为 `true`，其他账号修改、重置密码或删除它都会返回 403。
+
+## 集控运维
+
+可见范围：系统管理员看全部班级，班主任只看自己担任班主任的班级，其他账号返回 403；自动化仅系统管理员。
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET /api/devices/health` | 教室电脑列表：`className`、`deviceName`、`online`、`lastSeenAt`、`offlineSince`、`pluginVersion`、`classIslandVersion`、`outdated`、`currentCourse`、`volumePercent`、`muted`、`profileDriftCount`、`timeline` |
+| `GET /api/audit?from=&to=&classId=&userId=&command=&success=&before=&limit=` | 操作记录，按时间倒序 `{items, nextBefore}`；下一页把 `nextBefore` 作为 `before` |
+| `GET /api/audit/export` | 同样筛选条件导出 Excel |
+| `GET /api/automation/rules`、`POST /api/automation/rules` | 自动化规则列表、新建 |
+| `GET/PUT/DELETE /api/automation/rules/{id}` | 读取、整体保存、删除 |
+| `POST /api/automation/rules/{id}/run` | 立即对全部目标班级执行一次 |
+| `GET /api/automation/runs?ruleId=&limit=` | 执行记录（`Pending`、`Running`、`Succeeded`、`Failed`、`Missed`） |
+| `GET /api/lesson-stats?from=&to=&classId=&teacher=&includeProfile=` | 课时统计 `{teachers:[{teacher, total, substitute, substituted, classes}]}`，省略日期为本月 |
+| `GET /api/lesson-stats/export` | 导出 Excel（汇总 + 明细） |
+| `GET /api/me/lesson-stats?from=&to=` | 本人课时，任何账号可用 |
+
+自动化规则结构：
+
+```json
+{
+  "name": "放学 30 分钟后关机",
+  "enabled": true,
+  "trigger": { "kind": 2, "event": 3, "delayMinutes": 30 },
+  "target": { "classIds": ["<班级ID>"], "groupIds": [] },
+  "actions": [ { "kind": 5, "powerAction": 1 } ],
+  "validFrom": null,
+  "validTo": null
+}
+```
+
+- `trigger.kind`：`1` 定时（`weekdays` 1=周一…7=周日、`time` 为教室本地 `HH:mm`、`schoolDaysOnly`）；`2` 课表事件（`event` 1 上课、2 下课、3 放学，可选 `subject`、`delayMinutes` 0–180）；`3` 教室电脑上线（`delaySeconds` 0–600）。
+- `actions[].kind`：`1` 通知（`notification`）、`2` 清除提醒、`3` 主界面（`mainMenuVisible`）、`4` 音量（`volume`）、`5` 电源（`powerAction`）、`6` 扩展（`extensionId`、`extensionArgs`）、`7` 下发该班档案临时层（`replaceExistingTempLayers`）；1–5 个。
+- `PUT` 是整体保存：先 `GET` 完整规则，只修改需要改的字段再提交。
 
 ## 管理、设置与维护接口
 
