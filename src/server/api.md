@@ -362,12 +362,12 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `20` | 仅重启 ClassIsland | 人员管理 |
 | `21` | 设置科目教师 | 换课 |
 | `22` | 远程终端 | 人员管理，且必须是系统管理员 |
-| `23` | 文件分发 | 人员管理，且必须是系统管理员 |
+| `23` | 文件分发（内联方式） | 必须是系统管理员；推荐改用下方[文件分发](#文件分发)接口 |
 | `24` | 修改扩展插件设置 | 不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置) |
 | `25` | 应用服务端档案 | 不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案) |
 | `26` | 读取设备档案 | 不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案) |
 
-命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
+命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
 发送通知示例：
 
@@ -388,6 +388,36 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ~~~
+
+### 文件分发
+
+把文件发到教室电脑的桌面、下载或文档文件夹。需要目标班级的“文件分发”权限（`SendFiles`，系统管理员默认拥有，其他账号由管理员开启）。文件先上传到服务端，设备在后台断点续传下载并校验 SHA-256，单个文件默认最大 2 GB（见[配置参考](configuration.md)）。
+
+1. 上传：`POST /api/files?name=课件.pptx`，请求体就是文件的原始字节。返回 `201` 和 `{id, fileName, size, sha256, expiresAt, deliveries: []}`；超过上限返回 `413`。
+2. 发送：`POST /api/files/{id}/send`，请求体：
+
+```json
+{
+  "classNames": ["高一(3)班"],
+  "nextClass": false,
+  "timeZoneOffsetMinutes": 480,
+  "targetFolder": 1,
+  "overwrite": false
+}
+```
+
+   也可以用 `classIds`。`nextClass: true` 表示加入当前账号“我的日程”中接下来要上课的班级。返回逐台状态 `deliveries`。
+3. 查询进度：`GET /api/files/{id}`（上传者本人或系统管理员），`deliveries[]` 含 `targetName`、`state`（0 等待、1 接收中、2 已送达、3 失败）、`percent`、`receivedBytes`、`totalBytes`、`message` 与 `savedPath`。`DELETE /api/files/{id}` 可提前删除。
+
+```bash
+id=$(curl -s -X POST "$SERVER/api/files?name=课件.pptx" -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/octet-stream" --data-binary @课件.pptx | jq -r .id)
+curl -s -X POST "$SERVER/api/files/$id/send" -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" -d '{"nextClass":true,"targetFolder":1}'
+curl -s "$SERVER/api/files/$id" -H "Authorization: Bearer $KEY"
+```
+
+默认不覆盖同名文件，而是自动改名为“名称 (2).扩展名”。插件离线的班级立即显示失败；服务端保留文件 24 小时，期间设备断线重连可以继续下载。旧版插件只能接收系统管理员发送的 10 MB 以内文件。
 
 ### 批量命令
 

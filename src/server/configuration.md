@@ -26,11 +26,16 @@ order: 2
 | <code>Server:AccessTokenTtl</code> | <code>Server__AccessTokenTtl</code> | <code>01:00:00</code> | 短期访问令牌有效期 |
 | <code>Server:DeviceSessionTtl</code> | <code>Server__DeviceSessionTtl</code> | <code>30.00:00:00</code> | 设备会话有效期 |
 | <code>Server:ConnectionAuthorizationRefreshInterval</code> | <code>Server__ConnectionAuthorizationRefreshInterval</code> | <code>00:01:00</code> | 在线 WebSocket 持久化授权状态的兜底复查周期 |
+| <code>Server:FileTransferMaxBytes</code> | <code>Server__FileTransferMaxBytes</code> | <code>2147483648</code>（2 GiB） | 文件分发单个文件上限（字节），最大 4 GiB |
+| <code>Server:FileTransferQuotaBytes</code> | <code>Server__FileTransferQuotaBytes</code> | <code>21474836480</code>（20 GiB） | 中转文件总量上限，<code>0</code> 表示不限制 |
+| <code>Server:FileTransferRetention</code> | <code>Server__FileTransferRetention</code> | <code>1.00:00:00</code> | 中转文件保留时长，过期自动删除 |
 
 另有两个优先级更高、便于容器首次启动的环境变量：
 
 - <code>REMOTECI_ADMIN_PASSWORD</code>：可选，预先创建系统管理员的密码（适合无人值守部署）；留空时首次打开 WebUI 会进入初始化向导。
 - <code>REMOTECI_PLUGIN_PAIR_CODE</code>：可选，插件引导配对码。用它接入的设备会进入“班级管理 → 未分配设备”，需要分配到班级；日常请在 WebUI 为每个班级生成配对码。
+
+中转文件保存在数据库所在目录的 <code>file-transfers</code> 子目录，不进入配置备份。前面有 nginx 等反向代理时，需要同步放开请求体大小（例如 <code>client_max_body_size 2g;</code>），否则大文件会在代理层被拒绝。
 
 这些初始值只在数据库中没有对应数据时使用。修改已经运行过的容器环境变量，不会覆盖现有管理员密码或重新生成插件凭据。
 
