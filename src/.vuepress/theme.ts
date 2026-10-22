@@ -33,6 +33,7 @@ export default hopeTheme({
           "getting-started",
           "status",
           "features",
+          "app-guard",
           "connection",
           "troubleshooting",
         ],

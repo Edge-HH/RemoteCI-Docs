@@ -499,6 +499,50 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 - `actions[].kind`：`1` 通知（`notification`）、`2` 清除提醒、`3` 主界面（`mainMenuVisible`）、`4` 音量（`volume`）、`5` 电源（`powerAction`）、`6` 扩展（`extensionId`、`extensionArgs`）、`7` 下发该班档案临时层（`replaceExistingTempLayers`）；1–5 个。
 - `PUT` 是整体保存：先 `GET` 完整规则，只修改需要改的字段再提交。
 
+### 应用守护
+
+以下接口仅限系统管理员，其他账号返回 403。功能说明见 [应用守护](../guide/app-guard.md)。
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET/PUT /api/settings/app-guard` | 全局策略 |
+| `GET /api/devices/{credentialId}/app-guard` | 单台设备的生效策略 `{credentialId, overridden, policy}`；设备不存在返回 404 |
+| `PUT /api/devices/{credentialId}/app-guard` | 让该设备改用单独策略 |
+| `DELETE /api/devices/{credentialId}/app-guard` | 该设备恢复沿用全局 |
+| `GET /api/app-guard/events?credentialId=&limit=` | 最近守护事件 `[{credentialId, deviceName, kind, kindName, detail, atUnixMs}]`，按时间倒序，`limit` 默认 100、最大 500 |
+
+`credentialId` 取自 `GET /api/devices/health`。
+
+策略对象：
+
+```json
+{
+  "enabled": true,
+  "restartAfterExit": true,
+  "restartAfterExitDelayMinutes": 40,
+  "restartOnCrash": true,
+  "preventDeletion": true,
+  "backupIntervalHours": 24,
+  "organizationName": "RemoteCI"
+}
+```
+
+- `restartAfterExitDelayMinutes` 取 0–1440，0 表示立即；`backupIntervalHours` 取 1–168。越界值会被截断。
+- `organizationName` 只读，在 WebUI“系统配置 › 组织信息”中修改。
+- `PUT` 是整体保存。
+
+事件的 `kind` 取值：
+
+- `restored`：已自动恢复
+- `restore-failed`：恢复失败
+- `crash-restarted`：意外退出后重启
+- `exit-restarted`：退出后自启
+- `crash-loop-paused`：频繁崩溃，暂停重启
+- `backup-completed`：备份完成
+- `backup-failed`：备份失败
+
+`restored` 与 `restore-failed` 会以个人通知 `app_guard` 发给全部系统管理员。
+
 ## 管理、设置与维护接口
 
 以下接口沿用 WebUI 的权限判断：人员、角色列表、访客设置和插件配对码要求“人员管理”；角色创建/修改/删除、班级创建/删除、分组、插件凭据和备份恢复要求系统管理员；班级名称与头像要求系统管理员或该班班主任；通知发送人设置的读取只需登录，修改要求系统管理员；课表拉取与自动拉取设置要求系统管理员或当前班级班主任；换课仍要求“换课”；概览状态要求“概览”。拥有“人员管理”的普通账号不能创建、编辑、删除管理员，也不能创建管理员的 API Key。
