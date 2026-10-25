@@ -15,9 +15,9 @@ RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手表和手机客�
 - 管理员默认拥有全部权限，因此默认可使用 API。
 - 班主任和老师默认包含“API 访问”，因此默认可使用 API。
 - 学生默认没有“API 访问”。
-- 管理员可在“人员权限 → 角色配置”调整角色默认权限，或在“人员权限 → 编辑账号 → 附加权限”为单个账号开启。
+- 管理员可在“人员与角色 → 角色”调整角色默认权限，或在“人员与角色 → 编辑账号 → 附加权限”为单个账号开启。
 
-有权限的账号可在“个人账号 → API Key”自行创建和吊销密钥；系统管理员或拥有“人员管理”权限的账号也可在“人员权限 → 编辑账号 → API Key”为其他账号代管。密钥明文只在创建时显示一次，服务端只保存 SHA-256 摘要，数据库中无法恢复完整密钥。
+有权限的账号可在“个人账号 → API Key”自行创建和吊销密钥；系统管理员或拥有“人员管理”权限的账号也可在“人员与角色 → 编辑账号 → API Key”为其他账号代管。密钥明文只在创建时显示一次，服务端只保存 SHA-256 摘要，数据库中无法恢复完整密钥。
 
 移除“API 访问”权限、禁用账号或吊销密钥后，已签发的 API Key 会立即失效。修改密码不会自动吊销 API Key；如怀疑密钥泄露，应单独吊销。
 
@@ -132,26 +132,37 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 
 ### 管理自定义课程
 
-所有已登录账号都可管理自己的单次课程，设备令牌与用户 API Key 均可调用，API Key 仍需账号具备 API 访问权限。数据按认证账号隔离，不接受账号或班级参数。
+所有已登录账号都可管理自己的自定义课程，设备令牌与用户 API Key 均可调用，API Key 仍需账号具备 API 访问权限。数据按认证账号隔离，不接受账号或班级参数。
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/me/schedule/courses` | 按开始时间列出本人课程 |
+| `GET /api/me/schedule/courses` | 列出本人课程（每周课程按周一到周日、开始时刻排序，单次课程在后） |
 | `POST /api/me/schedule/courses` | 新建课程 |
 | `PUT /api/me/schedule/courses/{id}` | 完整替换课程，先查询并保留未修改字段 |
 | `DELETE /api/me/schedule/courses/{id}` | 删除课程，成功返回 204 |
 
-创建或修改的请求体：
+课程按“每周星期几 + 当天起止时刻 + 周次”重复。创建或修改的请求体：
 
 ~~~json
-{"subject":"自习","location":"图书馆","startsAt":"2026-10-18T14:00:00+08:00","endsAt":"2026-10-18T15:00:00+08:00","reminderMinutes":20,"notifyAtStart":true}
+{"subject":"自习","location":"图书馆","weekDay":3,"startTime":"14:00","endTime":"15:00","weekCountDiv":1,"weekCountDivTotal":2,"timeZoneOffsetMinutes":480,"reminderMinutes":20,"notifyAtStart":true}
 ~~~
 
-名称为 1–100 字，地点最多 200 字；起止时间使用含时区偏移的 ISO 8601，结束晚于开始且时长不超过 24 小时，支持跨午夜。`reminderMinutes` 为 1–10080 分钟，null 或省略表示关闭课前提醒；`notifyAtStart` 默认 true。响应包含这些字段和稳定的课程 `id`。操作他人的编号与不存在的编号均返回 404。
+| 字段 | 说明 |
+| --- | --- |
+| `weekDay` | 0=周日，1=周一 … 6=周六 |
+| `startTime` / `endTime` | `HH:mm`，结束晚于开始且在同一天内 |
+| `weekCountDiv` / `weekCountDivTotal` | 0 为每周；否则为 `weekCountDivTotal`（2–4）周一轮中的第几周，1/2 单周、2/2 双周，含义与档案课表 `TimeRule` 相同。按[学期设置](#学期设置)的教学周计算，未设置学期开始日期时只能选每周 |
+| `timeZoneOffsetMinutes` | 起止时刻所在时区的 UTC 偏移（-840～840），省略时为服务端时区；修改时保留原值 |
 
-合并日程的自定义条目带 `source: "personal"`，`classId` 为全零 GUID，`className` 为地点或“自定义课程”，不代表真实班级，也不可用于换课。通过 `courses[].personalCourseId` 识别课程，课程还带绝对时间 `startsAt`、`endsAt` 和提醒设置。自定义课程不受班级节假日停课影响。
+只上一次的安排不传 `weekDay`，改传含时区偏移的 ISO 8601 `startsAt` / `endsAt`（须在当天内结束），服务端保存为单次课程。名称为 1–100 字，地点最多 200 字。`reminderMinutes` 为 1–10080 分钟，null 或省略表示关闭课前提醒；`notifyAtStart` 默认 true。响应在这些字段外包含稳定的课程 `id`、`summary`（如“每周三 14:00–15:00 · 单周”）、单次课程的 `date`，以及下一次课的绝对时间 `startsAt` / `endsAt`。操作他人的编号与不存在的编号均返回 404。
 
-服务端约每 15 秒检查提醒，生成 `personal_course_upcoming`、`personal_course_start` 个人通知；上课提醒可在开始后 5 分钟内补发，发送记录持久保存以避免重启后重复生成。客户端通过个人通知接收提醒，不应独立重复生成同类提醒。
+### 学期设置
+
+`GET /api/settings/semester`（任何已登录账号）返回 `{startDate, syncToClassrooms, currentWeek?}`。学期开始日期所在周（周一起）为第 1 教学周，`currentWeek` 为本周的教学周；`startDate` 为 null 表示未设置。`PUT /api/settings/semester`（仅系统管理员）请求体 `{"startDate":"2026-09-01","syncToClassrooms":true}`，`startDate` 传 null 清除。它决定自定义课程的单双周与按档案推算课表时的多周轮换；`syncToClassrooms` 为 true 时同时写入支持该能力的教室端 ClassIsland“单周起始日期”。
+
+合并日程的自定义条目带 `source: "personal"`，`classId` 为全零 GUID，`className` 为地点或“自定义课程”，不代表真实班级，也不可用于换课。同一课程在七日内每周各出现一次，通过 `courses[].personalCourseId` 加日期识别某一次课，每次课带各自的绝对时间 `startsAt`、`endsAt` 和提醒设置。自定义课程不受班级节假日停课影响。
+
+服务端约每 15 秒检查提醒，每周的每一次课分别提醒，生成 `personal_course_upcoming`、`personal_course_start` 个人通知；上课提醒可在开始后 5 分钟内补发，发送记录持久保存以避免重启后重复生成。客户端通过个人通知接收提醒，不应独立重复生成同类提醒。
 
 ### 换课申请与个人通知
 
@@ -160,23 +171,31 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 | 方法与路径 | 说明 |
 | --- | --- |
 | `GET /api/swap-requests/catalog` | 所有班级七日课表（已叠加临时任课老师，`mine` 标出自己的课）与本人任教学科 `mySubjects` |
-| `POST /api/swap-requests` | 发起申请：`{mode, source?, target, subjectName?, reason, force}` |
+| `POST /api/swap-requests` | 发起申请：`{mode, source?, target, subjectName?, reason, force, acknowledgeConflicts?}` |
+| `POST /api/swap-requests/preview` | 请求体同上，只检查冲突、不写入数据，返回 `{conflicts:[…]}` |
 | `GET /api/swap-requests?box=incoming\|outgoing\|all&status=` | 发给我的、我发起的，或两者 |
-| `GET /api/swap-requests/{id}` | 单条详情 |
-| `POST /api/swap-requests/{id}/approve` | 通过，可带 `{note}`；立即下发临时换课 |
+| `GET /api/swap-requests/{id}` | 单条详情；查看强制换课详情会自动标记为已看过 |
+| `POST /api/swap-requests/{id}/approve` | 通过，可带 `{note, acknowledgeConflicts}`；立即写入调课记录并下发教室端 |
 | `POST /api/swap-requests/{id}/reject` | 拒绝，可带 `{note}` |
 | `POST /api/swap-requests/{id}/cancel` | 申请人撤销待审批申请 |
 | `POST /api/swap-requests/{id}/revoke` | 对方老师撤回强制换课 |
+| `POST /api/swap-requests/{id}/revert` | 相关班级的班主任或系统管理员撤回已通过或已强制的换课 |
+| `GET /api/classes/{classId}/schedule-adjustments?from=` | 该班调课记录（默认从今天起）：来源 `swap` / `direct` / `classisland` / `backfill`，状态 `active` / `reverted` / `invalidated` / `expired`，送达 `pending` / `applied` / `conflict`，`effective` 表示该节当前生效的那条 |
+| `DELETE /api/schedule-adjustments/{id}` | 本班班主任或系统管理员删除直接换课或教室端修改产生的调课；来自换课申请的请走 `revert` |
+| `POST /api/swap-requests/seen` | 强制换课看过即处理：`{ids:[…]}`（省略表示全部），返回 `{pending}` 剩余待处理数 |
 | `GET /api/me/notifications?after=&unread=true` | 个人通知列表 |
 | `POST /api/me/notifications/read` | 标记已读：`{ids:[…]}` 或 `{all:true}` |
 | `POST /api/me/action-links` | 为聊天卡片按钮签发一次性确认链接：`{action, targetId}`，`action` 为 `swap.approve`、`swap.reject` 或 `swap.revoke`，返回 `{url, path, expiresAt}` |
 
 - **`mode`**：`1` 互换，`source`、`target` 各是一节课 `{classId, date, index}`；`2` 替换，只填 `target` 与 `subjectName`。
 - **`{id}`**：也接受响应中的 8 位 `shortId`。
-- **`status`**：`1` 待审批、`2` 已通过、`3` 已拒绝、`4` 已撤销、`5` 已过期、`6` 已强制、`7` 已撤回。
+- **`status`**：`1` 待审批、`2` 已通过、`3` 已拒绝、`4` 已撤销、`5` 已过期、`6` 已强制、`7` 已撤回、`8` 已失效（同一节课已有其他换课生效，或生效后教室端无法再应用，原因见 `invalidReason`）。
+- **`delivery`**：已通过或已强制的申请在教室端的状态，`pending`（教室电脑暂未确认，上线后自动生效）或 `applied`。`canRevert` 表示当前账号能否撤回已生效的换课；`acknowledgedConflicts` 为确认过的冲突。
+- **冲突**：任课冲突（`teacher_clash`，按真实上下课时间）与同一节课的其他待审批申请（`slot_pending`）需要确认：未带 `acknowledgeConflicts: true` 时返回 `409 SWAP_CONFLICTS`，错误体 `conflicts[]` 每项含 `kind`、`message`、`requiresAcknowledgement` 以及班级、日期、节次、老师、时间等。`slot_adjusted`（课位当天已调整过）只作提示。
+- **`needsAction`**：是否计入“待我处理”。可审批的申请，或对方还没看过的强制换课为 `true`；看过后为 `false`，但 `canRevoke` 仍为 `true`，可以继续撤回。客户端角标按它计数。
 - **确认链接**：只有当前账号确实能执行该动作时才签发（否则 400）。链接 24 小时有效、只能成功使用一次；打开只显示确认页，点确认才执行，聊天软件预览链接不会误操作；执行失败（例如教室电脑离线）时链接恢复可用。
-- **个人通知**：部分通知带 `classId` 与 `link`（站内路径，如 `/Devices`）。新增种类 `device_offline`、`device_online`、`automation_failed`。
-- **错误码**：`SWAP_NOT_OWN`（两节都不是自己的课）、`SWAP_SUBJECT_MISSING`（目标班没有该学科）、`SWAP_SLOT_CHANGED`（课位已被调整）、`SWAP_STATE_CONFLICT`（申请已被处理）、`SWAP_FORCE_LOCKED`（当天这节课的强制换课已被撤回）。
+- **个人通知**：部分通知带 `classId` 与 `link`（站内路径，如 `/Devices`）。新增种类 `device_offline`、`device_online`、`automation_failed`、`swap_invalidated`（换课已失效）。
+- **错误码**：`SWAP_NOT_OWN`（两节都不是自己的课）、`SWAP_SUBJECT_MISSING`（目标班没有该学科）、`SWAP_SLOT_CHANGED`（课位已被调整，或教室端无法应用）、`SWAP_STATE_CONFLICT`（申请已被处理或已有相同的待审批申请）、`SWAP_FORCE_LOCKED`（当天这节课的强制换课已被撤回）、`SWAP_CONFLICTS`（需要确认冲突）、`CAPABILITY_UNSUPPORTED`（教室端插件版本过旧，422）。
 
 发起互换申请的示例：
 
@@ -419,6 +438,21 @@ curl -s "$SERVER/api/files/$id" -H "Authorization: Bearer $KEY"
 
 默认不覆盖同名文件，而是自动改名为“名称 (2).扩展名”。插件离线的班级立即显示失败；服务端保留文件 24 小时，期间设备断线重连可以继续下载。旧版插件只能接收系统管理员发送的 10 MB 以内文件。
 
+### 屏幕截图
+
+让班级的教室电脑截取当前屏幕（全部显示器）并上传到服务端。需要该班的“屏幕截图”权限（`CaptureScreen`，值 32768；班主任默认拥有，系统管理员始终拥有）。通用 `POST /api/commands` 不能截图。
+
+1. 截图：`POST /api/classes/{classId}/screenshot`，请求体可省略。服务端等待教室电脑截屏并上传完成（通常几秒，最长约 45 秒），成功返回 `201` 和 `{id, classId, deviceName, requestedBy, width, height, size, capturedAt, expiresAt, url}`。失败时返回 `503`（插件离线）、`409`（插件版本过旧）、`504`（超时）或 `422`（截图失败），响应体的 `message` 说明原因。系统管理员可传 `{"credentialId": "…"}` 指定同班的某台设备。
+2. 下载：`GET {url}`（即 `/api/screenshots/{id}`），返回 `image/png`。
+3. 列表：`GET /api/classes/{classId}/screenshots`，该班保留期内的截图，新到旧。
+
+```bash
+url=$(curl -s -X POST "$SERVER/api/classes/$CLASS/screenshot" -H "Authorization: Bearer $KEY" | jq -r .url)
+curl -s "$SERVER$url" -H "Authorization: Bearer $KEY" -o screen.png
+```
+
+截图保留 24 小时，每个班级最多 30 张；无权查看或已过期的截图统一返回 `404`。
+
 ### 批量命令
 
 ~~~http
@@ -528,7 +562,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 ```
 
 - `restartAfterExitDelayMinutes` 取 0–1440，0 表示立即；`backupIntervalHours` 取 1–168。越界值会被截断。
-- `organizationName` 只读，在 WebUI“系统配置 › 组织信息”中修改。
+- `organizationName` 只读，在 WebUI“系统设置 › 常规 › 组织信息”中修改。
 - `PUT` 是整体保存。
 
 事件的 `kind` 取值：
@@ -599,6 +633,8 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | `PUT` | `/api/settings/notifications` | 修改通知发送人前缀设置 |
 | `GET` | `/api/settings/schedule-pull` | 读取自动拉取课表周期 |
 | `PUT` | `/api/settings/schedule-pull` | 修改自动拉取课表周期；全局设置，仅系统管理员 |
+| `GET` | `/api/settings/semester` | 读取学期开始日期与本周教学周，见[学期设置](#学期设置) |
+| `PUT` | `/api/settings/semester` | 修改学期开始日期；仅系统管理员 |
 | `GET` | `/api/settings/class-self-service` | 读取班主任权限（班级自治策略）；任何登录账号可读 |
 | `PUT` | `/api/settings/class-self-service` | 修改班主任权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`；仅系统管理员。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |

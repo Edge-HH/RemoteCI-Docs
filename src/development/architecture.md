@@ -66,7 +66,7 @@ ClassIsland 插件 ── 局域网 WebSocket（HMAC 挑战认证）── Wear 
 
 ## 服务端档案库
 
-档案管理由独立档案服务与 Razor Page handlers 承担，不在 `BatchControlModel` 中扩展。管理区 `/Profiles` 提供全局模板库和批量编辑；班级菜单 `/ClassProfiles` 固定当前班级。“控制”和“批量控制”保留集控加入、插件策略等设备操作；“课表”页继续处理七日课表查看、换课与科目教师设置。
+档案管理由独立档案服务与 Razor Page handlers 承担，不在 `BatchControlModel` 中扩展。“教务”分组的档案库 `/Profiles` 提供全局模板库和批量编辑；班级菜单 `/ClassProfiles` 固定当前班级。“控制”和“批量控制”保留集控加入、插件策略等设备操作；“课表”页继续处理七日课表查看、换课与科目教师设置。
 
 SQLite／EF Core 保存完整 ClassIsland JSON、名称、修订号、来源模板和更新时间，每班至多一份工作副本。分配模板复制 JSON 并保留对象 ID，各班与模板后续修改相互隔离。服务端不依赖 ClassIsland UI 程序集，按 JSON 节点编辑已支持的字段，保留未知字段及附加配置；上传上限 5 MB，解析预览后确认保存。时间表上课时段变化会按原时段保留关联课程，新时段插入空课程；删除已排课程的时段需确认。无效时间和缺失引用阻止保存、下发。
 

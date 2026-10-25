@@ -29,6 +29,8 @@ order: 2
 | <code>Server:FileTransferMaxBytes</code> | <code>Server__FileTransferMaxBytes</code> | <code>2147483648</code>（2 GiB） | 文件分发单个文件上限（字节），最大 4 GiB |
 | <code>Server:FileTransferQuotaBytes</code> | <code>Server__FileTransferQuotaBytes</code> | <code>21474836480</code>（20 GiB） | 中转文件总量上限，<code>0</code> 表示不限制 |
 | <code>Server:FileTransferRetention</code> | <code>Server__FileTransferRetention</code> | <code>1.00:00:00</code> | 中转文件保留时长，过期自动删除 |
+| <code>Server:ScreenshotMaxBytes</code> | <code>Server__ScreenshotMaxBytes</code> | <code>20971520</code>（20 MiB） | 单张屏幕截图上限（字节），不能超过 20 MiB |
+| <code>Server:ScreenshotRetention</code> | <code>Server__ScreenshotRetention</code> | <code>1.00:00:00</code> | 屏幕截图保留时长，过期自动删除；每个班级另外最多保留 30 张 |
 
 另有两个优先级更高、便于容器首次启动的环境变量：
 
