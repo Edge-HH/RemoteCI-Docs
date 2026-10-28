@@ -385,8 +385,12 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `24` | 修改扩展插件设置 | 不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置) |
 | `25` | 应用服务端档案 | 不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案) |
 | `26` | 读取设备档案 | 不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案) |
+| `29` | 上传主界面文件 | 主界面 |
+| `30` | 获取当前主界面文件 | 主界面 |
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
+
+命令 `29` 的 `mainWindowLayout` 包含 `layoutJson`（ClassIsland 主界面文件 `Config/ComponentLayouts/<名称>.json` 的内容，须是含 `Lines` 数组的 JSON 对象，不超过 2 MB）、`mode`（`1` 覆盖设备当前使用的主界面文件并立即生效，`2` 新建）、`name`（新建时的文件名，不含 `.json`，最长 64 字符，同名已存在时拒绝）与 `activate`（新建后是否立即使用，默认 `true`）。命令 `30` 无载荷，回执 `data` 是 JSON 字符串 `{"name","layoutJson","layouts","isManagementMode"}`。设备处于 ClassIsland 集控模式时只能获取，上传返回 `INVALID_REQUEST`；两条命令需要插件声明 `main-window.layout-apply` / `main-window.layout-read` 能力。
 
 发送通知示例：
 
