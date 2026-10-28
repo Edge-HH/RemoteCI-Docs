@@ -388,6 +388,7 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `26` | 读取设备档案 | 不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案) |
 | `29` | 上传主界面文件 | 主界面 |
 | `30` | 获取当前主界面文件 | 主界面 |
+| `31` | 安装或更新服务端中转的 `.cipx` 插件包 | 不能经此端点发送；在 WebUI“安装插件 / 升级插件”开启“服务端预下载”或使用“从 CIPX 安装”，服务端会先为目标设备登记下载权限 |
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
