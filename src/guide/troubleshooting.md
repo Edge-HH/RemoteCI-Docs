@@ -12,7 +12,7 @@ ClassIsland 日志出现 <code>The assembly architecture is not compatible with 
 
 ## ClassIsland 2.2 预览版上的语音与课表异常
 
-ClassIsland 2.2 预览版（版本号 2.1.1.x）改动了部分公开 API 的类型，早期版本的 RemoteCI 插件会因此报错：日志出现 <code>Method not found</code> 或 <code>MissingMethodException</code>，表现为发送语音消息时浮窗无法打开，日志每 30 秒提示“生成或推送七日课表失败”，WebUI 与手表也拿不到课表。请升级到包含兼容层的插件版本，同一份 <code>RemoteCI.Plugin.cipx</code> 即可同时运行在 ClassIsland 2.0/2.1 稳定版与 2.2 预览版上。仍在使用 ClassIsland 2.1.0.1 等稳定版的用户不受影响，也不需要额外设置。
+ClassIsland 2.2 预览版（版本号 2.1.1.x）改动了部分公开 API 的类型，早期版本的 RemoteCI 插件会因此报错：日志出现 <code>Method not found</code> 或 <code>MissingMethodException</code>，表现为发送语音消息时浮窗无法打开，日志每 30 秒提示“生成或推送七日课表失败”，WebUI 与手表也拿不到课表。应用守护从备份恢复 ClassIsland 后，若弹出包含 <code>AppBase.GetRootWindow()</code> 的 <code>MissingMethodException</code> 错误窗口、看不到“请勿自行删除”提示，也是同一原因（恢复本身已经完成）。请升级到包含兼容层的插件版本，同一份 <code>RemoteCI.Plugin.cipx</code> 即可同时运行在 ClassIsland 2.1 稳定版与 2.2 预览版上。插件最低支持 ClassIsland 2.1.0，2.0.x 请先升级 ClassIsland。
 
 ## ClassIsland 插件无法连接服务器
 

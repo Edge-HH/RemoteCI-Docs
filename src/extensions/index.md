@@ -46,7 +46,7 @@ RemoteCI 插件公开了一组扩展接口：其他 ClassIsland 插件可以把�
 
 ## 前置条件
 
-- 你的项目是 ClassIsland 2.x 插件，目标框架为 .NET 8。
+- 你的项目是 ClassIsland 2.1 及以上的插件，目标框架为 .NET 8（RemoteCI 以 `ClassIsland.PluginSdk` 2.1.0.1 编译）。
 - RemoteCI 插件已安装，并且至少成功连接过一次（云端或局域网均可）。
 - 编译期引用 `RemoteCI.Plugin.dll`。
 - 在 `AppStarted` 之后注册扩展，因为此时 ClassIsland 主机容器才构建完成，才能取到注册表服务。

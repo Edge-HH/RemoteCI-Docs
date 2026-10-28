@@ -113,8 +113,8 @@ WebUI 的有效能力是“服务端 ∩ 当前主插件”，手表的有效能
 
 新增 `voice-message.send` 必须显式协商，不加入旧 V3 端默认获得的基础能力。新端使用当前能力列表通告语音支持；界面能力与独立的发送语音权限同时满足才显示入口。
 
-- 插件 3.2.1.4：net8.0，兼容 ClassIsland 2.x 宿主；插件程序集为 AnyCPU，可随 ClassIsland 的 x86、x64 与 arm64 Windows 宿主一起加载，因此不得设置 x64 等平台专用目标。CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
-- 插件读写宿主成员时区分两类 API：签名稳定的接口直接编译绑定；ClassIsland 2.2 预览版（2.1.1.x）改过签名的成员（<code>Profile.Subjects</code>、<code>Profile.ClassPlans</code>、<code>FluentIcon.Glyph</code>、窗口装饰枚举、动态资源绑定的 <code>Bind</code> 重载）统一经 <code>HostApiCompat</code> 反射访问，避免同一份包在旧宿主可用、在新宿主抛 <code>MissingMethodException</code>。注意同名重载差异（如 <code>Bind(AvaloniaProperty, IBinding)</code> 变为 <code>Bind(AvaloniaProperty, BindingBase)</code>）无法靠编译期检查发现，新增宿主调用后需按目标版本的签名实际核对。
+- 插件：net8.0，以 <code>ClassIsland.PluginSdk</code> 2.1.0.1 编译（manifest <code>apiVersion: 2.1.0.0</code>），最低支持 ClassIsland 2.1.0，2.0.x 不再适配；插件程序集为 AnyCPU，可随 ClassIsland 的 x86、x64 与 arm64 Windows 宿主一起加载，因此不得设置 x64 等平台专用目标。CIPX 由 <code>CreateCipx=true</code> 生成，市场资产固定为 <code>RemoteCI.Plugin.cipx</code>。
+- 插件读写宿主成员时区分两类 API：签名稳定的接口直接编译绑定；ClassIsland 2.2 预览版（2.1.1.x）改过签名的成员（<code>Profile.Subjects</code>、<code>Profile.ClassPlans</code>、<code>FluentIcon.Glyph</code>、窗口装饰枚举、动态资源绑定的 <code>Bind</code> 重载、<code>AppBase.GetRootWindow()</code> 的返回类型）统一经 <code>HostApiCompat</code> 反射访问，避免同一份包在 2.1.0 可用、在 2.1.1 抛 <code>MissingMethodException</code>。这类差异无法靠编译期检查发现，插件测试 <code>PluginApiCompatibilityTests</code> 会用插件实际编译出的程序集，逐个解析它引用的宿主类型与成员（ClassIsland、Avalonia、FluentAvalonia、CommunityToolkit.Mvvm、Harmony），分别核对 2.1.0.1 与 2.1.1.1 宿主；支持新宿主版本时在测试项目追加对应的 <code>PackageDownload</code>。
 - 服务端 3.2.1.4：net10.0，发布 linux-x64 / win-x64 平台包。
 - 手表 3.2.1.4：minSdk 30 / targetSdk 37，Release APK 使用签名密钥构建。
 - Wear OS 源码若位于云盘或 NAS 按需同步目录，可在不入库的 <code>wearos/local.properties</code> 中设置 <code>remoteci.buildDir=C:/本地目录</code>，将 Gradle 生成文件放到普通本地磁盘，避免重解析占位文件触发 <code>Cannot snapshot ... not a regular file</code>；也支持环境变量 <code>REMOTECI_WEAROS_BUILD_DIR</code> 和命令行属性 <code>-Premoteci.buildDir</code>。

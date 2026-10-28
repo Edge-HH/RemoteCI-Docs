@@ -12,7 +12,7 @@ RemoteCI 有三项运行组件：ClassIsland 插件、RemoteCI 服务端和 Wear
 
 | 组件 | 要求 |
 | --- | --- |
-| 教室电脑 | 已安装并可正常运行的 ClassIsland 2.x |
+| 教室电脑 | 已安装并可正常运行的 ClassIsland 2.1.0 及以上（2.0.x 请先升级 ClassIsland） |
 | 手表 | Wear OS 3 或更高版本，RemoteCI 手表应用 3.2.1.4 |
 | 服务端 | 支持 Docker 的 NAS 或 Linux 服务器，建议有域名和 HTTPS |
 | 网络 | 局域网直连默认使用 TCP 8765，设备扫描固定使用 UDP 48765；服务端默认使用 TCP 8080 |

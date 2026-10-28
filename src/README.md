@@ -48,7 +48,7 @@ features:
     details: 管理员和班主任可创建 API Key，让脚本按账号现有权限读取课堂信息、发送命令或管理 RemoteCI。
 ---
 
-RemoteCI 是面向 ClassIsland 2.x 的课表手表联动项目，由 ClassIsland 插件、ASP.NET Core 服务端、Wear OS 客户端和共享通信协议组成。
+RemoteCI 是面向 ClassIsland 2.1 及以上的课表手表联动项目，由 ClassIsland 插件、ASP.NET Core 服务端、Wear OS 客户端和共享通信协议组成。
 
 当前稳定软件发布版本统一为 3.2.1.4，通信协议号为整数 3。稳定版使用 ClassIsland 要求的四段纯数字标签，Beta 使用 v3.x.x-beta.y 且不进入插件市场。协议号为 3 的组件可以互连，新功能是否显示由能力协商决定；V2/V4 与 V3 不能直接通信。部署到正式环境前，请先阅读[安全与运维建议](./server/operations.md)。
 
