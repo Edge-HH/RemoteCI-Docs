@@ -29,12 +29,11 @@ RemoteCI 插件公开了一组扩展接口：其他 ClassIsland 插件可以把�
 一次扩展点击的完整链路如下：
 
 1. 你的插件在 ClassIsland 启动完成（`AppStarted`）后，从主机容器取得 `IRemoteCiExtensionRegistry` 并注册扩展。
-2. 你的插件第一次接入时，RemoteCI 在教室端弹窗询问“是否允许 xx 接入 RemoteCI”（见[接入授权](#接入授权)）；获得授权后才继续下面的步骤。
-3. RemoteCI 插件监听注册表变化，把扩展清单通过 `extensions_sync` 同步给局域网手表和云端服务端。
-4. 服务端为每个扩展应用启用、非管理员开放和个人手表展示策略；手表与 WebUI 再按当前用户有效权限显示入口。
-5. 用户在手表或 WebUI 点击无参数扩展时立即发送 `RunExtension` 命令；有参数扩展先填写参数表单再发送。
-6. RemoteCI 插件执行端校验权限与必填参数，调用你的 `ExecuteAsync`。
-7. 你返回 `CommandResult`，RemoteCI 把它作为回执传回发起命令的手表或 WebUI 并显示结果。
+2. RemoteCI 插件监听注册表变化，把扩展清单通过 `extensions_sync` 同步给局域网手表和云端服务端。
+3. 服务端为每个扩展应用启用、非管理员开放和个人手表展示策略；手表与 WebUI 再按当前用户有效权限显示入口。
+4. 用户在手表或 WebUI 点击无参数扩展时立即发送 `RunExtension` 命令；有参数扩展先填写参数表单再发送。
+5. RemoteCI 插件执行端校验权限与必填参数，调用你的 `ExecuteAsync`。
+6. 你返回 `CommandResult`，RemoteCI 把它作为回执传回发起命令的手表或 WebUI 并显示结果。
 
 整个流程中，RemoteCI 只负责“同步清单、转发命令、传回回执”，功能本身始终由你的代码实现。
 
@@ -241,7 +240,7 @@ public class MyPluginEntry : PluginBase
 
 ### 5. 验证
 
-1. 编译插件并安装到 ClassIsland，重启 ClassIsland。启动后会弹出“是否允许 xx 接入 RemoteCI”，选择“允许”。
+1. 编译插件并安装到 ClassIsland，重启 ClassIsland。
 2. 确认 RemoteCI 设置中连接正常，手表控制页能看到课程状态。
 3. 打开手表“控制”页，底部应出现“锁屏”和“自定义提醒”两个入口。
 4. 点击“锁屏”应直接执行并收到“已锁屏”回执；点击“自定义提醒”应进入参数表单，填写后执行。
@@ -393,11 +392,11 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 
 | 成员 | 说明 |
 | --- | --- |
-| `GetExtensions()` | 返回已获得接入授权的插件所注册扩展的快照 |
-| `Register(extension)` | 注册扩展；`Id` 已存在时抛出 `InvalidOperationException`。未获授权时注册照常成功，只是扩展暂不可见 |
+| `GetExtensions()` | 返回当前全部已注册扩展的快照 |
+| `Register(extension)` | 注册扩展；`Id` 已存在时抛出 `InvalidOperationException` |
 | `Unregister(id)` | 按 `Id` 注销，返回是否成功移除 |
 | `ExtensionsChanged` | 注册/注销后触发，RemoteCI 会重新广播扩展清单 |
-| `GetGroups()` | 返回已获得接入授权的插件所注册扩展分组的快照 |
+| `GetGroups()` | 返回当前全部已注册扩展分组的快照 |
 | `RegisterGroup(group)` | 注册扩展分组；`Id` 已存在，或设置字段 `Key` 为空、重复时抛出异常 |
 | `UnregisterGroup(id)` | 按 `Id` 注销分组，返回是否成功移除；该组扩展回到“其他扩展” |
 | `NotifySettingsChanged(groupId)` | 本机设置值变化后调用，RemoteCI 会重新读取并同步当前值 |
@@ -580,16 +579,6 @@ new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Ty
 - 隐藏或置灰的字段仍按当前值提交，不会被清空；卡片内字段全部隐藏时整张卡片隐藏。
 - 这些都是可选的布局提示，旧版服务端忽略后退回平铺表单。如果你的插件需要兼容尚未升级的 RemoteCI，先用反射确认 `ExtensionParameter` 存在 `Section` 等属性再赋值，否则在旧版上会抛 `MissingMethodException`；不支持时可把卡片名拼进 `Label`（如“阴影 · 阴影颜色”），颜色改用 `Text`。
 
-## 接入授权
-
-RemoteCI 会询问教室端是否允许你的插件接入，接口本身没有变化，你不需要为此修改代码：
-
-- 你的插件第一次调用 `Register` 或 `RegisterGroup` 时，RemoteCI 按调用来源识别出你的插件（插件目录或清单中的入口程序集），在 ClassIsland 中弹窗“是否允许 xx 接入 RemoteCI”。
-- 授权前以及被拒绝后，注册调用都不会抛出异常，你的插件照常运行；只是你注册的扩展和设置页不会同步到服务端、手表与手机，`GetExtensions()` / `GetGroups()` 中也看不到它们，远程调用会返回“扩展功能不存在”。
-- 决定会保存下来，之后启动不再询问。教室端可以在“RemoteCI 设置 → 扩展接入授权”中允许、拒绝或解除授权，变更立即生效。
-- 系统管理员远程安装插件时可以勾选“同时授权这些插件接入 RemoteCI”，插件安装后启动时不再询问；也可以在 WebUI“扩展接入授权”中保持授权，此时教室端不能解除授权。
-- 请在插件程序集所在的插件目录内调用注册表；通过其他目录中的共享库代为注册时，RemoteCI 只能按程序集名识别，预授权与保持授权将无法对应到你的插件 Id。
-
 ## 安全边界
 
 - 扩展必须处于启用状态；非管理员还需由管理员逐项开放。WebUI 控制页以列表显示扩展名、ID、执行和编辑按钮，管理员可编辑全局策略，普通账号只能编辑自己的手表展示开关。
@@ -620,7 +609,7 @@ RemoteCI 会询问教室端是否允许你的插件接入，接口本身没有�
 
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
-| 手表或 WebUI 看不到扩展入口 | 教室端尚未允许或拒绝了插件接入、清单未同步、扩展未启用或开放、个人展示已关闭、权限不足、插件未连接 | 在教室端“RemoteCI 设置 → 扩展接入授权”中允许，或在 WebUI“扩展接入授权”中保持授权；重启 ClassIsland；检查扩展编辑窗口与账号权限；确认 RemoteCI 连接正常 |
+| 手表或 WebUI 看不到扩展入口 | 清单未同步、扩展未启用或开放、个人展示已关闭、权限不足、插件未连接 | 重启 ClassIsland；检查扩展编辑窗口与账号权限；确认 RemoteCI 连接正常 |
 | 点击后提示 `FORBIDDEN` | 缺少“扩展功能”权限或管理员未开放 | 授予“扩展功能”权限，并检查该扩展的开放策略 |
 | 提示 `INVALID_REQUEST` | 扩展 Id 未注册、缺少必填参数，或参数不符合类型、范围、选项声明 | 检查插件是否加载了注册代码；按提示修正参数 |
 | 提示 `INTERNAL_ERROR` | `ExecuteAsync` 抛出了异常 | 查看 ClassIsland 日志中的 `RemoteCI 扩展执行失败` 记录 |
