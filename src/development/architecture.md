@@ -29,7 +29,7 @@ ClassIsland 插件 ── 局域网 WebSocket（HMAC 挑战认证）── Wear 
 
 ## 数据流
 
-1. 插件从 ClassIsland 收集状态与七日课表，状态按秒推送，课表独立低频同步。
+1. 插件从 ClassIsland 收集状态与今天起 30 天的课表（各端浏览只显示 7 天，其余日期供换课选择），状态按秒推送，课表独立低频同步。
 2. 插件把数据推送给局域网手表和云端服务端；服务端保存最近状态并转发给已认证手表。插件每次云端连接还会上报本机候选 IP、局域网端口与服务状态，服务端缓存并同步给手表用于自动直连。
 3. 手表提交命令时，服务端先检查账号权限，再把命令转发给在线插件。
 4. 插件执行后返回真实回执（成功、失败码、新修订号），服务端再把结果传回发起方，等待上限 15 秒。
@@ -49,7 +49,7 @@ ClassIsland 插件 ── 局域网 WebSocket（HMAC 挑战认证）── Wear 
 | <code>capabilities_sync</code> | 服务端/插件 → 手表 | 服务端能力与接收方每个可访问班级主插件的能力（<code>classPlugins</code>）；客户端按当前班级取用 |
 | <code>software_inventory</code> | 插件 → 服务端 | 设备、ClassIsland 与插件版本清单及最近升级状态 |
 | <code>state_push</code> | 插件 → 服务端/手表 | 高频当前课程状态 |
-| <code>schedule_sync</code> | 插件 → 服务端/手表 | 未来七日课表 |
+| <code>schedule_sync</code> | 插件 → 服务端/手表 | 今天起 30 天课表（旧版插件 7 天） |
 | <code>schedule_pull</code> | 服务端/手表 → 插件 | 请求插件立即重新生成并推送七日课表；不携带参数 |
 | <code>extensions_sync</code> | 插件 → 服务端/手表 | 扩展功能清单；服务端同时供 WebUI 控制菜单读取 |
 | <code>extension_groups_sync</code> | 插件 → 服务端 | 扩展分组（插件）、设置字段与设备当前设置值；只供 WebUI 控制页、批量控制页和扩展插件设置页使用 |

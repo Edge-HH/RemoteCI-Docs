@@ -170,7 +170,8 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/swap-requests/catalog` | 所有班级七日课表（已叠加临时任课老师，`mine` 标出自己的课）与本人任教学科 `mySubjects` |
+| `GET /api/swap-requests/catalog` | 所有班级的可选日期范围 `minDate`～`maxDate`（今天起 30 天，含首尾；旧版插件只同步 7 天时为其最后一天）、范围内本人有课的日期 `myDates`、今天起 7 天的课程 `days`（已叠加调课，`mine` 标出自己的课），以及本人任教学科 `mySubjects` |
+| `GET /api/swap-requests/catalog/day?classId=&date=` | 某班某天的课程 `{date, courses[]}`，用于选择 7 天以外的日期；放假或没有课时 `courses` 为空，超出范围或教室端未同步该日返回 400 |
 | `POST /api/swap-requests` | 发起申请：`{mode, source?, target, subjectName?, reason, force, acknowledgeConflicts?}` |
 | `POST /api/swap-requests/preview` | 请求体同上，只检查冲突、不写入数据，返回 `{conflicts:[…]}` |
 | `GET /api/swap-requests?box=incoming\|outgoing\|all&status=` | 发给我的、我发起的，或两者 |
