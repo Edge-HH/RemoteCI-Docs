@@ -389,6 +389,9 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `29` | 上传主界面文件 | 主界面 |
 | `30` | 获取当前主界面文件 | 主界面 |
 | `31` | 安装或更新服务端中转的 `.cipx` 插件包 | 不能经此端点发送；在 WebUI“安装插件 / 升级插件”开启“服务端预下载”或使用“从 CIPX 安装”，服务端会先为目标设备登记下载权限 |
+| `34` | 保持或解除保持插件的扩展接入授权 | 人员管理，且必须是系统管理员 |
+
+命令 `13` 的 `pluginManagement` 可带 `grantExtensionAccess: true`，安装的同时授权这些插件接入 RemoteCI 扩展，插件启动后教室端不再弹窗询问。命令 `34` 的 `extensionAccess` 包含 `action`（`1` 保持授权：授权并拒绝教室端取消授权；`2` 解除保持：授权不变，教室端可以解除）与 `pluginIds`（1–100 个插件 Id，RemoteCI 自身会被忽略），需要插件声明 `extensions.access` 能力。
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
