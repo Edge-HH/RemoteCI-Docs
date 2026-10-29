@@ -48,7 +48,7 @@ docker compose start remoteci
 
 服务端、插件、手表和 ClassIsland 主程序使用不同的升级方式：
 
-- 服务端：管理员登录 WebUI 后，在“系统设置 → 维护 → 系统更新”选择正式版或 Beta 渠道并点击“检查更新”。正式版排除预发布，Beta 同时包含正式版和预发布；启用强制更新后可重新下载并覆盖同一版本，但不会降级。Docker 会就地替换后由 <code>restart: unless-stopped</code> 重新启动；Windows 与裸机 Linux 会启动独立更新器，等待旧进程退出和文件锁释放后再替换实际程序集目录并自动重启。更新前会核对包内服务端版本与 release 标签。Visual Studio 或 <code>dotnet run</code> 的 Development 环境由构建工具管理，WebUI 会禁用在线覆盖更新，避免 release 写入源码目录。
+- 服务端：管理员登录 WebUI 后，在“系统设置 → 维护 → 系统更新”选择正式版或 Beta 渠道并点击“保存更新设置”，再点击“检查更新”。渠道保存在数据库中，后台自动检查（默认开启，每 6 小时一次）也按此渠道；开启“发现新版本后自动下载”后，后台预先下载并校验当前平台的更新包，面板显示“已下载并校验”，点击“安装并重启”时直接安装。GitHub 不可达时自动检查只记录失败，下个周期再试。正式版排除预发布，Beta 同时包含正式版和预发布；启用强制更新后可重新下载并覆盖同一版本，但不会降级。Docker 会就地替换后由 <code>restart: unless-stopped</code> 重新启动；Windows 与裸机 Linux 会启动独立更新器，等待旧进程退出和文件锁释放后再替换实际程序集目录并自动重启。更新前会核对包内服务端版本与 release 标签。Visual Studio 或 <code>dotnet run</code> 的 Development 环境由构建工具管理，WebUI 会禁用在线覆盖更新，避免 release 写入源码目录。
 - 手动上传更新包（调试）：在“系统设置 → 维护 → 系统更新”展开“手动上传更新包（调试）”，选择当前平台的服务端发布包 zip（页面会显示平台，如 <code>win-x64</code>；可以是 GitHub Release 中的 <code>RemoteCI.Server-版本-平台.zip</code>，也可以是本地 <code>dotnet publish</code> 输出打成的 zip，多包一层目录也能识别），确认后按与在线更新相同的流程安装并重启。上限 512MB；不校验 SHA-256，版本号取自包内 <code>RemoteCI.Server.dll</code>，允许同版本覆盖和降级——降级后若数据库已被新版本迁移，旧版本可能无法启动（Windows、裸机 Linux 与数据卷安装会在启动失败时自动退回原版本）。脚本可调用 <code>POST /api/admin/updates/upload</code>。
 - 插件：默认仍由 ClassIsland 插件市场统一管理；管理员也可在 WebUI“批量控制”页勾选一台或多台在线设备批量触发官方插件升级。插件包仍使用同一个四段纯数字多端 Release，固定资产名为 `RemoteCI.Plugin.cipx`，Release 正文携带同名文件的 MD5 标记；Beta 使用 `v3.x.x-beta.y`，仅供三端测试，不进入市场。升级命令只代表设备已接受任务，下载完成后 ClassIsland 会重启并重新上报版本。
 - 手表：连接 WebUI 后，在“设置 → 更新”选择正式版或 Beta 渠道；可强制重新下载并覆盖同一版本，但不能降级。稳定渠道只选择协议主版本相同的四段纯数字 Release，Beta 额外选择 `v3.x.x-beta.y`及在 GitHub 标为预发布的四段 Release，旧三段 `v3.x.x` 稳定标签不再作为新候选；通过系统安装器覆盖安装时仍要求发布包与当前安装包签名一致。

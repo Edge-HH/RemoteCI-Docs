@@ -645,7 +645,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | `PUT` | `/api/settings/class-self-service` | 修改班主任权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`；仅系统管理员。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |
 | `GET` | `/api/admin/system` | 读取当前版本与自更新状态 |
-| `POST` | `/api/admin/updates/check` | 检查更新 |
+| `POST` | `/api/admin/updates/check` | 检查更新；请求体 `{"channel":"stable"}` 或 `{"channel":"beta"}`，省略渠道时使用系统设置中保存的更新渠道 |
 | `POST` | `/api/admin/updates/upload` | 调试用：请求体为当前平台服务端发布包 zip（`Content-Type: application/zip`，上限 512MB），安装后返回 `202` 与 `{"version":"…","mode":"…"}` 并自动重启；不校验 SHA-256，允许同版本覆盖和降级 |
 | `GET` | `/api/admin/backups` | 列出备份 |
 | `POST` | `/api/admin/backups` | 创建备份 |
