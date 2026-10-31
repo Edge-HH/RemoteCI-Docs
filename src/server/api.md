@@ -6,7 +6,7 @@ order: 5
 
 # API 接口
 
-RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手表和手机客户端正在使用的 `/api/*` 端点，不另建一套重复路由；API Key 只是账号的一种长期凭据，权限始终按账号当前角色与附加权限实时计算。
+RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手表和手机客户端正在使用的 `/api/*` 端点，不另建一套重复路由；API Key 只是账号的一种长期凭据，权限始终按账号当前角色与个人调整（新增与收回）实时计算。
 
 ## 启用 API 访问
 
@@ -15,7 +15,7 @@ RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手表和手机客�
 - 管理员默认拥有全部权限，因此默认可使用 API。
 - 班主任和老师默认包含“API 访问”，因此默认可使用 API。
 - 学生默认没有“API 访问”。
-- 管理员可在“人员与角色 → 角色”调整角色默认权限，或在“人员与角色 → 编辑账号 → 附加权限”为单个账号开启。
+- 管理员可在“人员与角色 → 角色”调整角色默认权限，或在“人员与角色 → 编辑账号”的权限清单中为单个账号勾选或收回。
 
 有权限的账号可在“个人账号 → API Key”自行创建和吊销密钥；系统管理员或拥有“人员管理”权限的账号也可在“人员与角色 → 编辑账号 → API Key”为其他账号代管。密钥明文只在创建时显示一次，服务端只保存 SHA-256 摘要，数据库中无法恢复完整密钥。
 
@@ -482,7 +482,7 @@ POST /api/commands/broadcast
 
 ## 班级管理
 
-系统管理员可管理全部班级；班主任能否修改自己班级的名称和头像，由系统管理员在“班级管理 → 班主任权限”中统一决定（默认允许），未获准时返回 403：
+修改班级名称和头像需要该班的“班级名称与头像”权限（班主任默认拥有，系统管理员始终拥有），没有权限时返回 403：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -592,7 +592,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/users` | 列出账号 |
-| `POST` | `/api/users` | 创建账号；可选 `classId` 让账号以同一角色加入该班，省略则不加入任何班级。`password` 可留空，账号首次以空密码调用 `POST /api/auth/login` 时返回 `passwordPending` 与一次性 `setupToken`，再调用 `POST /api/auth/setup-password` 设置密码 |
+| `POST` | `/api/users` | 创建账号；可选 `classId` 让账号以同一角色加入该班，省略则不加入任何班级。`username`（ID）与 `displayName`（用户名）都可用于登录，不能与其他账号的 ID 或用户名重复（不区分大小写），冲突时返回 `409 USERNAME_EXISTS` 或 `409 DISPLAY_NAME_EXISTS`；`PUT /api/users/{id}` 与 `POST /api/me/display-name` 修改用户名时同样校验。`password` 可留空，账号首次以空密码调用 `POST /api/auth/login` 时返回 `passwordPending` 与一次性 `setupToken`，再调用 `POST /api/auth/setup-password` 设置密码 |
 | `PUT` | `/api/users/{id}` | 修改显示名、角色、启用状态和权限 |
 | `POST` | `/api/users/{id}/password` | 重置密码 |
 | `DELETE` | `/api/users/{id}` | 删除账号；系统管理员账号不能删除 |
@@ -641,8 +641,8 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 | `PUT` | `/api/settings/schedule-pull` | 修改自动拉取课表周期；全局设置，仅系统管理员 |
 | `GET` | `/api/settings/semester` | 读取学期开始日期与本周教学周，见[学期设置](#学期设置) |
 | `PUT` | `/api/settings/semester` | 修改学期开始日期；仅系统管理员 |
-| `GET` | `/api/settings/class-self-service` | 读取班主任权限（班级自治策略）；任何登录账号可读 |
-| `PUT` | `/api/settings/class-self-service` | 修改班主任权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`；仅系统管理员。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
+| `GET` | `/api/settings/class-self-service` | 读取班主任角色是否有“班级名称与头像”“从教室刷新课表”（旧接口）；任何登录账号可读 |
+| `PUT` | `/api/settings/class-self-service` | 直接修改班主任角色的这两项权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`（班名与头像合并为一项，任一为 true 即开启）；需要“角色配置”权限。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |
 | `GET` | `/api/admin/system` | 读取当前版本与自更新状态 |
 | `POST` | `/api/admin/updates/check` | 检查更新；请求体 `{"channel":"stable"}` 或 `{"channel":"beta"}`，省略渠道时使用系统设置中保存的更新渠道 |
