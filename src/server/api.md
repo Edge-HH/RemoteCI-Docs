@@ -561,6 +561,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
   "restartAfterExit": true,
   "restartAfterExitDelayMinutes": 40,
   "restartOnCrash": true,
+  "launchOnStartup": true,
   "preventDeletion": true,
   "backupIntervalHours": 24,
   "organizationName": "RemoteCI"
@@ -568,6 +569,7 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 ```
 
 - `restartAfterExitDelayMinutes` 取 0–1440，0 表示立即；`backupIntervalHours` 取 1–168。越界值会被截断。
+- `launchOnStartup`：登录 Windows 1 分钟后 ClassIsland 仍未运行时由守护启动，默认 `true`；不改动 ClassIsland 自身的开机自启设置。
 - `organizationName` 只读，在 WebUI“系统设置 › 常规 › 组织信息”中修改。
 - `PUT` 是整体保存。
 
