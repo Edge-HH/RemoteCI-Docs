@@ -106,6 +106,24 @@ GET /api/me/schedule
 
 返回当前账号的日程 `{ fromDate, generatedAt, days[] }`，包含本人的自定义课程；“老师”和“班主任”还会按显示名匹配各班课表中的教师名，聚合任教课程。每天的 `items[]` 包含 `classId`、`className` 和 `courses[]`。插件从未同步过课表的班级按该班当前档案推算，对应的 `items[]` 带 `"source": "profile"`；自定义课程带 `"source": "personal"`。没有任教课程且没有自定义课程时 `days` 为空数组。可选参数 `timeZoneOffsetMinutes` 见下一节。
 
+### 按周获取我的日程
+
+~~~http
+GET /api/me/schedule/week?from={yyyy-MM-dd}&to={yyyy-MM-dd}&timeZoneOffsetMinutes={分钟}
+~~~
+
+返回 `{ from, to, today, minDate, maxDate, teachingWeek?, periods[], days[] }`。`from` 省略时为本周一，`to` 省略时为 `from` 起 7 天，最多 42 天。已过去的日子按课时台账中的实际上课老师匹配，今天起最远 30 天。`periods[]` 是表格的节次轴 `{ index, startTime, endTime, gapBefore, dividerBefore }`；`days[]` 覆盖可浏览范围（`minDate`–`maxDate`）内的每一天，结构同 `GET /api/me/schedule`，另带 `dayKind`、`holidayName`。
+
+### 学科颜色
+
+~~~http
+GET /api/me/subject-colors
+PUT /api/me/subject-colors          {"name": "物理", "color": "#E9A55F"}
+DELETE /api/me/subject-colors?name=物理
+~~~
+
+学科颜色按账号保存，手机与 WebUI 共用。`GET` 返回 `{ palette[], items[{ name, color, custom }] }`：`palette` 为可选的 18 种颜色，`items` 列出你能看到的课表、日程与自定义课程中的学科（以及改过颜色的学科），按拼音排序。`PUT` 的颜色必须在色板中，`DELETE` 恢复默认，均返回 `204`。
+
 ### 获取下一节课
 
 ~~~http
@@ -257,6 +275,14 @@ GET /api/schedule?classId={classId}
 ~~~
 
 返回目标班级最近一次同步的课表；插件离线时仍返回最后一次上线时同步的数据。插件从未同步过课表而本班保存了班级档案时，返回按该档案推算的七日课表，并带 `"source": "profile"`；这类课表只供查看，其中的 `revision` 不能用于向插件提交换课。插件同步的课表不带 `source` 字段。既没有课表也没有班级档案时返回 `404`。
+
+### 按周获取班级课表
+
+~~~http
+GET /api/schedule/week?classId={classId}&from={yyyy-MM-dd}&to={yyyy-MM-dd}
+~~~
+
+权限同上。返回 `{ classId, from, to, today, minDate, maxDate, teachingWeek?, source?, periods[], days[], subjects[] }`：已过去的日子来自课时台账（实际上过的课，含代课），今天及以后来自插件课表或档案推算。可浏览范围从学期开始所在周的周一（未设置学期时为本周一）到课表数据的最后一天，范围外的日期不出现在 `days` 中。课程与科目带可选的 `location`（科目地点），每天带可选的 `dividerAfterIndexes`（分割线位置）。
 
 ### 获取扩展功能
 
