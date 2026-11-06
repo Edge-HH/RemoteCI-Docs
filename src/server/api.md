@@ -415,6 +415,9 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `29` | 上传主界面文件 | 主界面 |
 | `30` | 获取当前主界面文件 | 主界面 |
 | `31` | 安装或更新服务端中转的 `.cipx` 插件包 | 不能经此端点发送；在 WebUI“安装插件 / 升级插件”开启“服务端预下载”或使用“从 CIPX 安装”，服务端会先为目标设备登记下载权限 |
+| `36` | 设置班级策略 | 不能经此端点发送；在 WebUI“班级管理”或“批量控制”中设置 |
+| `37` | 读取设备当前的 ClassIsland 设置 | 不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中读取 |
+| `38` | 修改设备的 ClassIsland 设置 | 不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中修改 |
 
 命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
@@ -518,6 +521,22 @@ POST /api/commands/broadcast
 | `GET` | `/api/classes/{id}/avatar` | 读取班级头像（无需登录），未设置时返回 404 |
 
 AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接口。
+
+### 班级策略
+
+`GET /api/classes` 等返回的班级对象带有可选字段 `policy`：原版 ClassIsland 集控服务器的限制项与 RemoteCI 的两个开关，默认值分别为“不限制”和“允许”。字段与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#班级策略)。
+
+班级策略没有独立的 REST 写接口：它只能由系统管理员在 WebUI“管理 › 班级”的班级菜单“班级策略”或“批量控制 › 班级策略”中修改。原因与档案应用类似，服务端要先按班级保存期望状态，再向该班全部在线设备下发命令 `36 SetClassPolicy`（插件需声明 `class.policy` 能力）；`POST /api/commands`、手机/手表通用命令与局域网直连一律拒绝该命令。
+
+### ClassIsland 设置
+
+ClassIsland 设置命令（`37` / `38`）不能经 `POST /api/commands` 发送，但服务端为它们提供了专用接口，AstrBot 等外部客户端可凭 API Key 调用：
+
+- `GET /api/classisland-settings/catalog`：设置项目录 `{pages, items}`，含每个设置项的键、类型、范围、选项与界面文案；任何已认证账号可读。
+- `GET /api/classes/{classId}/classisland-settings`：读取该班教室电脑当前设置 `{classId, values}`。需要该班 `ControlClassIsland` 权限，否则 403；插件离线 503、缺能力 409、超时 504。
+- `PUT /api/classes/{classId}/classisland-settings`：请求体 `{“values”: {...}}`，**只写入给出的项**，未提及的设置保持设备当前值。服务端先按目录校验（未知键、类型与范围），失败返回 400；成功返回 `{classId, message}`，设备端失败按 503/409/504/422 返回 `CommandResult`。设置键与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#classisland-设置)。
+
+WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用同一能力：班级控制页打开时自动读取并预填，只提交修改过的项；批量控制页从空白表单开始，只提交明确填写过的项。
 
 ## 首次部署
 
