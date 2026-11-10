@@ -6,7 +6,7 @@ order: 5
 
 # API 接口
 
-RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手表和手机客户端正在使用的 `/api/*` 端点，不另建一套重复路由；API Key 只是账号的一种长期凭据，权限始终按账号当前角色与个人调整（新增与收回）实时计算。
+RemoteCI 提供面向账号的 REST API。API 复用 WebUI、手机网页、Android 与 Wear OS 客户端正在使用的 `/api/*` 端点，不另建一套重复路由；API Key 只是账号的一种长期凭据，权限始终按账号当前角色与个人调整（新增与收回）实时计算。
 
 ## 启用 API 访问
 
@@ -70,12 +70,15 @@ API Key 固定以 `rci_` 开头。不要把密钥放进 URL 查询参数、浏�
 | 状态码 | 含义 |
 | --- | --- |
 | `200` | 查询或命令执行成功 |
+| `201` | 资源创建成功 |
+| `202` | 命令已接受并排队（例如插件离线时保存的扩展设置，插件上线后补发） |
 | `204` | 操作成功且无响应体 |
 | `400` | 请求字段缺失或格式错误 |
 | `401` | API Key 无效、过期或账号不可用 |
 | `403` | 账号缺少所需权限，或不能访问目标班级 |
 | `404` | 目标资源或状态不存在 |
 | `409` | 资源冲突，例如重名、最后管理员保护或课表修订冲突 |
+| `413` | 上传文件超过配置上限 |
 | `422` | 命令已被接受但执行失败 |
 | `503` | 目标插件离线 |
 | `504` | 等待插件回执超时 |
@@ -88,7 +91,7 @@ API Key 固定以 `rci_` 开头。不要把密钥放进 URL 查询参数、浏�
 GET /api/me
 ~~~
 
-返回账号 ID、用户名、显示名、角色、有效权限和可访问班级。该接口只需要有效 API Key。
+返回账号 ID、用户名、显示名、角色、有效权限、`managementPermissions` 系统管理权限和可访问班级。该接口只需要有效 API Key。
 
 ### 获取可访问班级
 
@@ -176,7 +179,7 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 
 ### 学期设置
 
-`GET /api/settings/semester`（任何已登录账号）返回 `{startDate, syncToClassrooms, currentWeek?}`。学期开始日期所在周（周一起）为第 1 教学周，`currentWeek` 为本周的教学周；`startDate` 为 null 表示未设置。`PUT /api/settings/semester`（仅系统管理员）请求体 `{"startDate":"2026-09-01","syncToClassrooms":true}`，`startDate` 传 null 清除。它决定自定义课程的单双周与按档案推算课表时的多周轮换；`syncToClassrooms` 为 true 时同时写入支持该能力的教室端 ClassIsland“单周起始日期”。
+`GET /api/settings/semester`（任何已登录账号）返回 `{startDate, syncToClassrooms, currentWeek?}`。学期开始日期所在周（周一起）为第 1 教学周，`currentWeek` 为本周的教学周；`startDate` 为 null 表示未设置。`PUT /api/settings/semester`（需要“学期与调休”系统权限）请求体 `{"startDate":"2026-09-01","syncToClassrooms":true}`，`startDate` 传 null 清除。它决定自定义课程的单双周与按档案推算课表时的多周轮换；`syncToClassrooms` 为 true 时同时写入支持该能力的教室端 ClassIsland“单周起始日期”。
 
 合并日程的自定义条目带 `source: "personal"`，`classId` 为全零 GUID，`className` 为地点或“自定义课程”，不代表真实班级，也不可用于换课。同一课程在七日内每周各出现一次，通过 `courses[].personalCourseId` 加日期识别某一次课，每次课带各自的绝对时间 `startsAt`、`endsAt` 和提醒设置。自定义课程不受班级节假日停课影响。
 
@@ -184,7 +187,7 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 
 ### 换课申请与个人通知
 
-老师需要全局权限位 4096（老师主动换课）；强制换课还需要 8192。两者都在 `GET /api/me` 的 `permissions` 中。所有请求都使用 `Authorization: Bearer`，也接受 API Key。
+老师需要全局权限位 4096（`RequestScheduleSwap`，发起换课申请）；强制换课还需要 8192（`ForceScheduleSwap`）。两者都在 `GET /api/me` 的 `permissions` 中。所有请求都使用 `Authorization: Bearer`，也接受 API Key。
 
 | 方法与路径 | 说明 |
 | --- | --- |
@@ -200,7 +203,7 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 | `POST /api/swap-requests/{id}/revoke` | 对方老师撤回强制换课 |
 | `POST /api/swap-requests/{id}/revert` | 相关班级的班主任或系统管理员撤回已通过或已强制的换课 |
 | `GET /api/classes/{classId}/schedule-adjustments?from=` | 该班调课记录（默认从今天起）：来源 `swap` / `direct` / `classisland` / `backfill`，状态 `active` / `reverted` / `invalidated` / `expired`，送达 `pending` / `applied` / `conflict`，`effective` 表示该节当前生效的那条 |
-| `DELETE /api/schedule-adjustments/{id}` | 本班班主任或系统管理员删除直接换课或教室端修改产生的调课；来自换课申请的请走 `revert` |
+| `DELETE /api/schedule-adjustments/{id}` | 本班拥有“直接换课与编辑课表”（`ManageSchedule`）权限的账号可删除直接换课或教室端修改产生的调课，系统管理员始终可以；来自换课申请的请走 `revert` |
 | `POST /api/swap-requests/seen` | 强制换课看过即处理：`{ids:[…]}`（省略表示全部），返回 `{pending}` 剩余待处理数 |
 | `GET /api/me/notifications?after=&unread=true` | 个人通知列表 |
 | `POST /api/me/notifications/read` | 标记已读：`{ids:[…]}` 或 `{all:true}` |
@@ -290,7 +293,16 @@ GET /api/schedule/week?classId={classId}&from={yyyy-MM-dd}&to={yyyy-MM-dd}
 GET /api/extensions?classId={classId}
 ~~~
 
-返回目标班级的扩展定义及当前账号是否能调用。是否可调用同时取决于账号的“扩展功能”权限、管理员逐扩展策略和个人手表展示偏好。
+返回目标班级的扩展定义及当前账号是否能调用。是否可调用同时取决于账号的“使用扩展功能”权限、管理员逐扩展策略和个人客户端展示偏好。
+
+### 修改扩展策略或个人展示
+
+~~~http
+PUT /api/extensions/{id}
+{ "enabled": true, "allowNonAdmin": true, "showOnWatch": true }
+~~~
+
+拥有“插件控制”系统权限的账号可修改扩展的全局启用与普通账号开放策略；其他账号只能修改自己的 `showOnWatch`（客户端展示开关）。成功返回 `204`；扩展 Id 不存在或字段非法返回 `400`。
 
 ### 获取扩展插件分组与设置
 
@@ -298,7 +310,7 @@ GET /api/extensions?classId={classId}
 GET /api/extension-groups?classId={classId}
 ~~~
 
-返回目标班级设备上报的扩展分组（通常对应一个 ClassIsland 插件），需要在该班拥有“扩展功能”权限：
+返回目标班级设备上报的扩展分组（通常对应一个 ClassIsland 插件），需要在该班拥有“使用扩展功能”权限：
 
 ~~~json
 [
@@ -328,7 +340,7 @@ Content-Type: application/json
 { "values": { "interval": "15" } }
 ~~~
 
-`values` 只需包含要修改的字段，未出现的字段保持设备当前值。服务端先按插件声明校验字段、类型、范围和必填，再把 `ApplyExtensionSettings` 命令发送到该班设备并等待回执，响应体与[单班级命令](#单班级命令)相同；该班插件离线时返回 `202` 与 `code: "QUEUED"`，设置已保存为待补发，插件上线后由服务端自动写入。系统管理员可修改任意班级；班主任只能修改已开放给班级自行管理的插件，且需要在本班拥有“扩展功能”权限，否则返回 403。批量下发到多个班级或具体设备请使用 WebUI 的“管理 › 插件控制”页。
+`values` 只需包含要修改的字段，未出现的字段保持设备当前值。服务端先按插件声明校验字段、类型、范围和必填，再把 `ApplyExtensionSettings` 命令发送到该班设备并等待回执，响应体与[单班级命令](#单班级命令)相同；该班插件离线时返回 `202` 与 `code: "QUEUED"`，设置已保存为待补发，插件上线后由服务端自动写入。系统管理员可修改任意班级；其他账号只有在插件已开放给班级自行管理，且在本班拥有“修改本班插件设置”权限时才能修改，否则返回 403。批量下发到多个班级或具体设备请使用 WebUI 的“管理 › 插件控制”页。
 
 ### 开放插件给班级自行管理
 
@@ -339,19 +351,19 @@ Content-Type: application/json
 { "allowClassAdmin": true }
 ~~~
 
-仅系统管理员可调用，返回 `{"groupId":"myplugin","allowClassAdmin":true}`。开关按插件设置、对全部班级生效，插件尚未上报时也可以先设置；新插件默认不开放。开放后，班主任在 WebUI“班级管理”中看到“插件”子页面，只列出已开放的插件，并可修改本班设置；`false` 收回后，该插件只由系统管理员统一管理。
+需要“插件控制”系统权限，返回 `{"groupId":"myplugin","allowClassAdmin":true}`。开关按插件设置、对全部班级生效，插件尚未上报时也可以先设置；新插件默认不开放。开放后，在本班拥有“修改本班插件设置”权限的账号（班主任默认拥有）可在 WebUI“班级管理”中看到“插件”子页面，只列出已开放的插件，并可修改本班设置；`false` 收回后，该插件只由系统管理员统一管理。
 
 ## 服务端档案
 
-档案库保存完整的 ClassIsland 档案 JSON：全局模板只有系统管理员可见；班级档案每班一份，系统管理员和本班班主任（且拥有 `ManageSchedule`，值 16）可以管理。WebUI 的 `/Profiles`、`/ClassProfiles` 页面与以下接口共用同一套服务端校验。
+档案库保存完整的 ClassIsland 档案 JSON：拥有“档案库”系统权限的账号可以管理全局模板与全部班级档案；其他账号按本班“本班档案”权限管理自己班级的档案。WebUI 的 `/Profiles`、`/ClassProfiles` 页面与以下接口共用同一套服务端校验。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/api/profiles` | 档案列表（不含 JSON）：管理员得到全部档案，班主任得到可管理班级的档案；可加 `?classId=` 只看一个班 |
+| `GET` | `/api/profiles` | 档案列表（不含 JSON）：档案库管理者得到全部档案，其他账号得到自己有“本班档案”权限的班级档案；可加 `?classId=` 只看一个班 |
 | `GET` | `/api/profiles/{id}` | 单份档案，含完整 `profileJson` |
 | `POST` | `/api/profiles/preview` | 请求体 `{"profileJson":"…"}`，返回解析结果与校验错误，不保存 |
 | `PUT` | `/api/profiles` | 批量保存，请求体 `{"items":[{"id":null,"classId":null,"sourceTemplateId":null,"name":"…","profileJson":"…","revision":0}]}`；修改时带上读到的 `id` 与 `revision`；一次最多 100 份，任一无效或冲突整批不写入 |
-| `POST` | `/api/profiles/{id}/copy` | 请求体 `{"revision":1,"name":"副本名"}`，复制全局模板；仅系统管理员 |
+| `POST` | `/api/profiles/{id}/copy` | 请求体 `{"revision":1,"name":"副本名"}`，复制全局模板；需要“档案库”系统权限 |
 | `DELETE` | `/api/profiles/{id}?revision=N` | 删除服务端档案，设备档案不受影响 |
 | `POST` | `/api/profiles/collect` | 请求体 `{"classIds":["…"]}`（1–100 个班级），读取各班在线设备的当前档案（含临时层），见下文；只返回，不保存 |
 | `POST` | `/api/profiles/apply` | 下发已保存的档案，见下文 |
@@ -387,39 +399,46 @@ Authorization: Bearer rci_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 | 数值 | 命令 | 所需权限 |
 | --- | --- | --- |
-| `1` | 换课 | 换课 |
-| `2` | 发送通知 | 发送与清除通知 |
-| `3` | 清除提醒 | 发送与清除通知 |
-| `4` | 显示或隐藏主界面 | 主界面 |
-| `5` | 电源操作 | 电源控制 |
-| `6` | 音量控制 | 电源控制 |
-| `7` | 执行扩展功能 | 扩展功能 |
-| `9` | 发送语音消息 | 发送语音 |
-| `10` | 升级插件 | 人员管理 |
-| `11` | 升级 ClassIsland | 人员管理 |
-| `12` | 刷新软件版本清单 | 人员管理 |
-| `13` | 安装插件 | 人员管理 |
-| `14` | 卸载插件 | 人员管理 |
-| `15` | 启用或禁用插件 | 人员管理 |
-| `16` | 设置插件管理策略（WebUI 已移除入口，仅为旧客户端保留） | 人员管理 |
-| `17` | 分发档案 | 人员管理 |
-| `18` | 修改时间表 | 人员管理 |
-| `19` | 加入集控 | 人员管理 |
-| `20` | 仅重启 ClassIsland | 人员管理 |
-| `21` | 设置科目教师 | 换课 |
-| `22` | 远程终端 | 人员管理，且必须是系统管理员 |
-| `23` | 文件分发（内联方式） | 必须是系统管理员；推荐改用下方[文件分发](#文件分发)接口 |
-| `24` | 修改扩展插件设置 | 不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置) |
-| `25` | 应用服务端档案 | 不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案) |
-| `26` | 读取设备档案 | 不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案) |
-| `29` | 上传主界面文件 | 主界面 |
-| `30` | 获取当前主界面文件 | 主界面 |
-| `31` | 安装或更新服务端中转的 `.cipx` 插件包 | 不能经此端点发送；在 WebUI“安装插件 / 升级插件”开启“服务端预下载”或使用“从 CIPX 安装”，服务端会先为目标设备登记下载权限 |
-| `36` | 设置班级策略 | 不能经此端点发送；在 WebUI“班级管理”或“批量控制”中设置 |
-| `37` | 读取设备当前的 ClassIsland 设置 | 不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中读取 |
-| `38` | 修改设备的 ClassIsland 设置 | 不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中修改 |
+| `1` | 换课 | 直接换课与编辑课表 |
+| `2` | 发送通知 | 发送通知 |
+| `3` | 清除提醒 | 清除通知 |
+| `4` | 显示或隐藏主界面 | 显示或隐藏主界面 |
+| `5` | 电源操作 | 关机、重启与睡眠 |
+| `6` | 音量控制 | 音量与静音 |
+| `7` | 执行扩展功能 | 使用扩展功能 |
+| `8` | “老师来了”强调提醒（旧客户端兼容，WebUI 暂不显示） | 旧客户端兼容 |
+| `9` | 发送语音消息 | 语音消息 |
+| `10` | 升级插件 | 升级软件 |
+| `11` | 升级 ClassIsland | 升级软件 |
+| `12` | 刷新软件版本清单 | 升级软件 |
+| `13` | 安装插件 | 管理插件 |
+| `14` | 卸载插件 | 管理插件 |
+| `15` | 启用或禁用插件 | 管理插件 |
+| `16` | 设置插件管理策略（WebUI 已移除入口，仅为旧客户端保留） | 管理插件 |
+| `17` | 分发档案 | 本班档案 |
+| `18` | 修改时间表 | 本班档案 |
+| `19` | 加入集控 | ClassIsland 程序控制 |
+| `20` | 仅重启 ClassIsland | ClassIsland 程序控制 |
+| `21` | 设置科目教师 | 直接换课与编辑课表 |
+| `22` | 远程终端 | 远程终端 |
+| `23` | 文件分发（内联方式） | 文件分发；内联方式仅限系统管理员，推荐改用下方[文件分发](#文件分发)接口 |
+| `24` | 修改扩展插件设置 | 修改本班插件设置（不能经此端点发送，请使用[修改扩展插件设置](#修改扩展插件设置)） |
+| `25` | 应用服务端档案 | 本班档案（不能经此端点发送，请使用 [`POST /api/profiles/apply`](#服务端档案)） |
+| `26` | 读取设备档案 | 本班档案（不能经此端点发送，请使用 [`POST /api/profiles/collect`](#服务端档案)） |
+| `27` | 截取设备屏幕 | 屏幕截图（不能经此端点发送，请使用[屏幕截图](#屏幕截图)） |
+| `28` | 由守护启动 ClassIsland（仅发往守护连接） | ClassIsland 程序控制 |
+| `29` | 上传主界面文件 | 主界面文件 |
+| `30` | 获取当前主界面文件 | 主界面文件 |
+| `31` | 安装或更新服务端中转的 `.cipx` 插件包 | 管理插件（不能经此端点发送；在 WebUI“安装插件 / 升级插件”开启“服务端预下载”或使用“从 CIPX 安装”） |
+| `32` | 停用设备守护 | 设备应用守护（不能经此端点发送；在“应用守护”页操作） |
+| `33` | 卸载设备守护 | 设备应用守护（不能经此端点发送；在“应用守护”页操作） |
+| `34` | 更新设备守护 | 设备应用守护（不能经此端点发送；在“应用守护”页操作） |
+| `35` | 设置科目地点 | 直接换课与编辑课表 |
+| `36` | 设置班级策略 | ClassIsland 程序控制（不能经此端点发送；在 WebUI“班级管理”或“批量控制”中设置） |
+| `37` | 读取设备当前的 ClassIsland 设置 | ClassIsland 程序控制（不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中读取） |
+| `38` | 修改设备的 ClassIsland 设置 | ClassIsland 程序控制（不能经此端点发送；在 WebUI“控制”或“批量控制”的“ClassIsland 设置”中修改） |
 
-命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
+命令 `21` 的 `subjectTeacher` 包含 `subjectId` 和 `teacherName`（不超过 100 字，留空表示清除）；命令 `35` 的 `subjectLocation` 包含 `subjectId` 和 `location`（留空表示在本班教室上课）。命令 `22` 的 `terminalCommand` 包含 `command`（不超过 4000 字符）、可选 `workingDirectory` 和 `timeoutSeconds`（1-10）；命令 `23` 的 `fileDistribution` 包含 `fileName`、`contentBase64`（解码后不超过 10 MB）、`targetFolder`（1 桌面、2 下载、3 文档）和 `overwrite`；这一内联方式只供系统管理员兼容使用，发送大文件或由老师发送请使用[文件分发](#文件分发)接口。终端输出或文件保存路径通过回执的 `data` 字段返回。命令 `7` 的 `extensionArgs` 会按扩展声明校验类型、范围与选项，不符合时返回 `INVALID_REQUEST`。
 
 命令 `29` 的 `mainWindowLayout` 包含 `layoutJson`（ClassIsland 主界面文件 `Config/ComponentLayouts/<名称>.json` 的内容，须是含 `Lines` 数组的 JSON 对象，不超过 2 MB）、`mode`（`1` 覆盖设备当前使用的主界面文件并立即生效，`2` 新建）、`name`（新建时的文件名，不含 `.json`，最长 64 字符，同名已存在时拒绝）与 `activate`（新建后是否立即使用，默认 `true`）。命令 `30` 无载荷，回执 `data` 是 JSON 字符串 `{"name","layoutJson","layouts","isManagementMode"}`。设备处于 ClassIsland 集控模式时只能获取，上传返回 `INVALID_REQUEST`；两条命令需要插件声明 `main-window.layout-apply` / `main-window.layout-read` 能力。
 
@@ -524,9 +543,9 @@ AstrBot 插件的 `/rci 班级改名`、`/rci 班级头像` 也基于这些接�
 
 ### 班级策略
 
-`GET /api/classes` 等返回的班级对象带有可选字段 `policy`：原版 ClassIsland 集控服务器的限制项与 RemoteCI 的两个开关，默认值分别为“不限制”和“允许”。字段与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#班级策略)。
+`GET /api/classes` 等返回的班级对象带有可选字段 `policy`：原版 ClassIsland 集控服务器的限制项与 RemoteCI 自己的三个开关（禁止插件设置、允许修改连接信息、允许打开插件设置页），限制项默认不限制、开关默认允许。字段与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#班级策略)。
 
-班级策略没有独立的 REST 写接口：它只能由系统管理员在 WebUI“管理 › 班级”的班级菜单“班级策略”或“批量控制 › 班级策略”中修改。原因与档案应用类似，服务端要先按班级保存期望状态，再向该班全部在线设备下发命令 `36 SetClassPolicy`（插件需声明 `class.policy` 能力）；`POST /api/commands`、手机/手表通用命令与局域网直连一律拒绝该命令。
+班级策略没有独立的 REST 写接口：它只能由拥有“班级管理”系统权限的账号在 WebUI“管理 › 班级”的班级菜单“班级策略”或“批量控制 › 班级策略”中修改。原因与档案应用类似，服务端要先按班级保存期望状态，再向该班全部在线设备下发命令 `36 SetClassPolicy`（插件需声明 `class.policy` 能力）；`POST /api/commands`、手机/手表通用命令与局域网直连一律拒绝该命令。
 
 ### ClassIsland 设置
 
@@ -534,7 +553,7 @@ ClassIsland 设置命令（`37` / `38`）不能经 `POST /api/commands` 发送�
 
 - `GET /api/classisland-settings/catalog`：设置项目录 `{pages, items}`，含每个设置项的键、类型、范围、选项与界面文案；任何已认证账号可读。
 - `GET /api/classes/{classId}/classisland-settings`：读取该班教室电脑当前设置 `{classId, values}`。需要该班 `ControlClassIsland` 权限，否则 403；插件离线 503、缺能力 409、超时 504。
-- `PUT /api/classes/{classId}/classisland-settings`：请求体 `{“values”: {...}}`，**只写入给出的项**，未提及的设置保持设备当前值。服务端先按目录校验（未知键、类型与范围），失败返回 400；成功返回 `{classId, message}`，设备端失败按 503/409/504/422 返回 `CommandResult`。设置键与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#classisland-设置)。
+- `PUT /api/classes/{classId}/classisland-settings`：请求体 `{"values": {...}}`，**只写入给出的项**，未提及的设置保持设备当前值。服务端先按目录校验（未知键、类型与范围），失败返回 400；成功返回 `{classId, message}`，设备端失败按 503/409/504/422 返回 `CommandResult`。设置键与含义见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#classisland-设置)。
 
 WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用同一能力：班级控制页打开时自动读取并预填，只提交修改过的项；批量控制页从空白表单开始，只提交明确填写过的项。
 
@@ -551,11 +570,11 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 
 ## 集控运维
 
-可见范围：系统管理员看全部班级，班主任只看自己担任班主任的班级，其他账号返回 403；自动化仅系统管理员。
+可见范围：系统管理员看全部班级；拥有“设备状态”“查看全部操作记录”“查看全部课时统计”等系统权限的账号也看全部；班主任默认只看自己担任班主任的班级，其他账号返回 403。自动化需要“自动化”系统权限。
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/devices/health` | 教室电脑列表：`className`、`deviceName`、`online`、`lastSeenAt`、`offlineSince`、`pluginVersion`、`classIslandVersion`、`outdated`、`currentCourse`、`volumePercent`、`muted`、`profileDriftCount`、`timeline` |
+| `GET /api/devices/health` | 教室电脑列表：`credentialId`、`classId`、`className`、`groupNames`、`deviceName`、`online`、`lastSeenAt`、`offlineSince`、`pluginVersion`、`classIslandVersion`、`outdated`、`currentCourse`、`volumePercent`、`muted`、`profileDriftCount`、`timeline` |
 | `GET /api/audit?from=&to=&classId=&userId=&command=&success=&before=&limit=` | 操作记录，按时间倒序 `{items, nextBefore}`；下一页把 `nextBefore` 作为 `before` |
 | `GET /api/audit/export` | 同样筛选条件导出 Excel |
 | `GET /api/automation/rules`、`POST /api/automation/rules` | 自动化规则列表、新建 |
@@ -586,7 +605,7 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 
 ### 应用守护
 
-以下接口仅限系统管理员，其他账号返回 403。功能说明见 [应用守护](../guide/app-guard.md)。
+以下接口需要“应用守护策略”（`ManageAppGuard`）系统权限（系统管理员始终拥有），其他账号返回 403。功能说明见 [应用守护](../guide/app-guard.md)。
 
 | 方法与路径 | 说明 |
 | --- | --- |
@@ -609,12 +628,18 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
   "launchOnStartup": true,
   "preventDeletion": true,
   "backupIntervalHours": 24,
+  "enhancedMode": false,
+  "randomBackupPath": false,
+  "backupDirectoryName": "",
+  "processName": "RemoteCI.Guard",
+  "backupPaths": [],
   "organizationName": "RemoteCI"
 }
 ```
 
 - `restartAfterExitDelayMinutes` 取 0–1440，0 表示立即；`backupIntervalHours` 取 1–168。越界值会被截断。
 - `launchOnStartup`：登录 Windows 1 分钟后 ClassIsland 仍未运行时由守护启动，默认 `true`；不改动 ClassIsland 自身的开机自启设置。
+- `enhancedMode`：安装 Windows 服务与登录任务，维护普通权限用户代理；`randomBackupPath`、`backupDirectoryName`、`backupPaths` 控制 ACL 受限的安全备份目录与额外备份目标（最多 3 个）；`processName` 可自定义守护代理文件名。
 - `organizationName` 只读，在 WebUI“系统设置 › 常规 › 组织信息”中修改。
 - `PUT` 是整体保存。
 
@@ -632,7 +657,7 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 
 ## 管理、设置与维护接口
 
-以下接口沿用 WebUI 的权限判断：人员、角色列表、访客设置和插件配对码要求“人员管理”；角色创建/修改/删除、班级创建/删除、分组、插件凭据和备份恢复要求系统管理员；班级名称与头像要求系统管理员或该班班主任；通知发送人设置的读取只需登录，修改要求系统管理员；课表拉取与自动拉取设置要求系统管理员或当前班级班主任；换课仍要求“换课”；概览状态要求“概览”。拥有“人员管理”的普通账号不能创建、编辑、删除管理员，也不能创建管理员的 API Key。
+以下接口按账号的有效权限判断：班级内操作按目标班级的班内角色与个人调整计算；系统管理操作按全局角色与个人调整计算，覆盖人员管理、角色配置、批量导入导出、班级管理、档案库、学期与调休、设备状态、批量控制、自动化、应用守护策略、插件控制、登录页与访客、插件凭据与连接码、查看全部操作记录与课时统计等权限。系统配置、服务端更新与备份，以及管理员账号本身，仍只有系统管理员可以操作；拥有相应权限的非管理员不能创建、编辑、删除管理员，也不能创建管理员的 API Key。班级名称与头像需要该班的“班级名称与头像”权限；通知发送人设置的读取只需登录，修改要求系统管理员；课表拉取需要该班的“从教室刷新课表”权限；自动拉取间隔需要“插件凭据与连接码”；换课需要“直接换课与编辑课表”；概览状态需要“概览页”。
 
 ### 人员
 
@@ -643,7 +668,7 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 | `PUT` | `/api/users/{id}` | 修改显示名、角色、启用状态和权限 |
 | `POST` | `/api/users/{id}/password` | 重置密码 |
 | `DELETE` | `/api/users/{id}` | 删除账号；系统管理员账号不能删除 |
-| `POST` | `/api/users/batch-import` | 文本批量导入账号 |
+| `POST` | `/api/users/batch-import` | 文本批量导入账号；需要“批量导入导出人员”系统权限 |
 
 ### 角色
 
@@ -685,9 +710,9 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 | `GET` | `/api/settings/notifications` | 读取通知发送人前缀设置 |
 | `PUT` | `/api/settings/notifications` | 修改通知发送人前缀设置 |
 | `GET` | `/api/settings/schedule-pull` | 读取自动拉取课表周期 |
-| `PUT` | `/api/settings/schedule-pull` | 修改自动拉取课表周期；全局设置，仅系统管理员 |
+| `PUT` | `/api/settings/schedule-pull` | 修改自动拉取课表周期；全局设置，需要“插件凭据与连接码”系统权限 |
 | `GET` | `/api/settings/semester` | 读取学期开始日期与本周教学周，见[学期设置](#学期设置) |
-| `PUT` | `/api/settings/semester` | 修改学期开始日期；仅系统管理员 |
+| `PUT` | `/api/settings/semester` | 修改学期开始日期；需要“学期与调休”系统权限 |
 | `GET` | `/api/settings/class-self-service` | 读取班主任角色是否有“班级名称与头像”“从教室刷新课表”（旧接口）；任何登录账号可读 |
 | `PUT` | `/api/settings/class-self-service` | 直接修改班主任角色的这两项权限，请求体 `{"canRename":true,"canChangeAvatar":true,"canPullSchedule":true}`（班名与头像合并为一项，任一为 true 即开启）；需要“角色配置”权限。扩展插件按插件开放，见[开放插件给班级自行管理](#开放插件给班级自行管理) |
 | `GET` | `/api/admin/status` | 读取服务端与插件连接概览 |
@@ -704,10 +729,10 @@ WebUI“控制”或“批量控制”的“ClassIsland 设置”弹窗也使用
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/holidays` | 任何登录账号：返回开关 `enabled`、数据源、刷新状态 `status {lastAttemptAt, lastSuccessAt, lastError}`、近期假期 `periods[] {name, offStart, offEnd, makeupDays[]}` 与已失效的手动安排 `staleOverrideDates` |
-| `PUT` | `/api/admin/holidays/settings` | 请求体 `{"enabled":true,"sourceUrlTemplate":null}`；自定义地址必须是包含 `{year}` 的 https 地址；仅系统管理员 |
-| `PUT` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 请求体 `{"followWeekday":3}` 指定调休上学日上周几（1-5）的课，`null` 表示不补课；日期必须是调休上学日；仅系统管理员 |
-| `DELETE` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 恢复自动推算；仅系统管理员 |
-| `POST` | `/api/admin/holidays/refresh` | 立即拉取节假日数据，返回刷新状态；仅系统管理员 |
+| `PUT` | `/api/admin/holidays/settings` | 请求体 `{"enabled":true,"sourceUrlTemplate":null}`；自定义地址必须是包含 `{year}` 的 https 地址；需要“学期与调休”系统权限 |
+| `PUT` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 请求体 `{"followWeekday":3}` 指定调休上学日上周几（1-5）的课，`null` 表示不补课；日期必须是调休上学日；需要“学期与调休”系统权限 |
+| `DELETE` | `/api/admin/holidays/overrides/{yyyy-MM-dd}` | 恢复自动推算；需要“学期与调休”系统权限 |
+| `POST` | `/api/admin/holidays/refresh` | 立即拉取节假日数据，返回刷新状态；需要“学期与调休”系统权限 |
 
 `makeupDays[]` 每项为 `{date, autoWeekday, followWeekday, followSource}`：`autoWeekday` 是自动推算值，`followWeekday` 是最终生效值，`followSource` 为 `auto` / `manual` / `skip` / `unresolved`。修改类接口成功后返回最新的总览；日期格式错误、不是调休上学日或周几超出 1-5 时返回 400。
 

@@ -26,6 +26,13 @@ order: 2
 | <code>Server:AccessTokenTtl</code> | <code>Server__AccessTokenTtl</code> | <code>01:00:00</code> | 短期访问令牌有效期 |
 | <code>Server:DeviceSessionTtl</code> | <code>Server__DeviceSessionTtl</code> | <code>30.00:00:00</code> | 设备会话有效期 |
 | <code>Server:ConnectionAuthorizationRefreshInterval</code> | <code>Server__ConnectionAuthorizationRefreshInterval</code> | <code>00:01:00</code> | 在线 WebSocket 持久化授权状态的兜底复查周期 |
+| <code>Server:AuthRateLimitPerMinute</code> | <code>Server__AuthRateLimitPerMinute</code> | <code>20</code> | 登录、刷新与插件配对等认证端点每个来源 IP 每分钟的请求上限 |
+| <code>Server:LogBootstrapSecrets</code> | <code>Server__LogBootstrapSecrets</code> | <code>true</code> | 首次启动自动生成管理员密码 / 插件配对码时是否写入日志；生产环境可关闭 |
+| <code>Server:HolidayAutoRefresh</code> | <code>Server__HolidayAutoRefresh</code> | <code>true</code> | 是否在后台定时拉取节假日与调休数据 |
+| <code>Server:OperationsWorkers</code> | <code>Server__OperationsWorkers</code> | <code>true</code> | 是否运行设备在线记录、离线告警、自动化、课时台账与每日档案差异检查等后台任务 |
+| <code>Server:WebPushSubject</code> | <code>Server__WebPushSubject</code> | <code>https://github.com/Edge-HH/RemoteCI</code> | 浏览器推送的 VAPID 联系地址 |
+| <code>Server:PluginMarketIndexUrl</code> | <code>Server__PluginMarketIndexUrl</code> | 空 | ClassIsland 插件市场索引地址；留空使用官方地址 |
+| <code>Server:PluginMarketMirror</code> | <code>Server__PluginMarketMirror</code> | 空 | 服务端预下载插件包时优先使用的市场镜像键（例如 github、ghproxy） |
 | <code>Server:FileTransferMaxBytes</code> | <code>Server__FileTransferMaxBytes</code> | <code>2147483648</code>（2 GiB） | 文件分发单个文件上限（字节），最大 4 GiB |
 | <code>Server:FileTransferQuotaBytes</code> | <code>Server__FileTransferQuotaBytes</code> | <code>21474836480</code>（20 GiB） | 中转文件总量上限，<code>0</code> 表示不限制 |
 | <code>Server:FileTransferRetention</code> | <code>Server__FileTransferRetention</code> | <code>1.00:00:00</code> | 中转文件保留时长，过期自动删除 |
@@ -43,7 +50,7 @@ order: 2
 
 WebSocket 在握手时完成一次完整数据库认证，后续高频状态消息使用连接内缓存身份。管理员吊销插件凭据、撤销设备会话、修改密码或调整账号权限时，服务端会主动断开或刷新对应连接；`ConnectionAuthorizationRefreshInterval` 仅用于处理外部数据库修改和主动通知遗漏，默认一分钟复查一次。设置过短会重新造成高频 SQLite 查询，生产环境通常不应低于默认值。
 
-插件配对码在使用前持续有效，成功配对后立即作废。需要新配对码时，登录 WebUI 在概览页点击“生成插件配对码”。
+WebUI 生成的插件配对码 30 分钟内有效，成功配对后立即作废。需要新配对码时，登录 WebUI 在概览页点击“生成插件配对码”。
 
 ## 时间格式
 
@@ -69,25 +76,25 @@ WebSocket 在握手时完成一次完整数据库认证，后续高频状态消�
 
 WebSocket 握手明确返回 <code>401</code> 或 <code>403</code> 时，插件会清除被拒绝的长期凭据，并在已保存新配对码时于下一次重试重新配对。其他 HTTP 错误不会清除凭据。
 
-插件每次建立云端 WebSocket 后都会上报当前局域网服务启用状态、监听端口和所有可用的非回环单播 IP。端口变更并重启 ClassIsland 后，新值会通过服务端自动同步到在线手表。
+插件每次建立云端 WebSocket 后都会上报当前局域网服务启用状态、监听端口和所有可用的非回环单播 IP。端口变更并重启 ClassIsland 后，新值会通过服务端自动同步到在线客户端。
 
 插件局域网服务还固定监听 UDP <code>48765</code> 作为设备发现端口。该端口只响应固定的 RemoteCI V3 扫描请求，并仅返回电脑名称和当前 WebSocket 端口；云服务器地址需要用户选中插件后再通过局域网 WebSocket <code>/bootstrap</code> 获取。
 
-云端中转和局域网服务默认开启。“RemoteCI 开发者设置”菜单默认隐藏，可在普通设置中开启显示并重启 ClassIsland；该页提供两个连接开关和“测试接收语音”。语音测试会进入与远程消息相同的权限检查、格式校验、强调通知、自动播放、浮窗和事件广播流程。关闭云端后插件不会再向 WebUI 同步状态、账号和课表；关闭局域网服务后手表无法直连插件，通常只用于诊断网络。
+云端中转和局域网服务默认开启。“RemoteCI 开发者设置”菜单默认隐藏，可在普通设置中开启显示并重启 ClassIsland；该页提供两个连接开关和“测试接收语音”。语音测试会进入与远程消息相同的权限检查、格式校验、强调通知、自动播放、浮窗和事件广播流程。关闭云端后插件不会再向 WebUI 同步状态、账号和课表；关闭局域网服务后手机与手表无法直连插件，通常只用于诊断网络。
 
-## 手表端默认配置
+## Android 与 Wear OS 默认配置
 
 连接设置：
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| ID（username） | 空 | 服务端创建的登录 ID |
+| ID（username） | 空 | 服务端创建的登录 ID 或用户名 |
 | 云端地址 | <code>http://10.0.2.2:8080</code> | 仅 Android 模拟器默认可用，真机必须改为实际地址 |
 | 启用局域网连接 | 是 | 仅在“设置 → 开发者”显示，开启时优先尝试局域网直连 |
 | 局域网主机 | 空 | 自动接收插件 IP，也可手动指定电脑 IP 或主机名 |
 | 局域网端口 | <code>8765</code> | 自动接收插件端口，也可在连接页手动修改 |
 
-云端连接和局域网连接默认开启，普通“连接”页均不提供关闭开关。“设置 → 开发者”可分别关闭两种连接；密码登录仍会临时使用云端完成认证，避免退出账号后无法恢复登录。
+云端连接和局域网连接默认开启，普通“连接”页均不提供关闭开关。“设置 → 开发者”可分别关闭两种连接；密码登录仍会临时使用云端完成认证，避免退出账号后无法恢复登录。Android 手机还支持扫码登录、桌面小组件与系统日历；详细说明见[功能说明](../guide/features.md#手机端)。
 
 通知开关（默认全部开启）：
 

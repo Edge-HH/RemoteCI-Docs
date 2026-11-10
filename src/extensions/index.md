@@ -6,15 +6,15 @@ order: 1
 
 # 接入扩展
 
-RemoteCI 插件公开了一组扩展接口：其他 ClassIsland 插件可以把自定义的“远程功能”注册进来，注册后该功能会自动出现在手表和 WebUI 的控制菜单中，点击后由注册方自己的回调执行。
+RemoteCI 插件公开了一组扩展接口：其他 ClassIsland 插件可以把自定义的“远程功能”注册进来，注册后该功能会自动出现在 WebUI、Android、Wear OS 等客户端的控制菜单中，点击后由注册方自己的回调执行。
 
-插件还可以注册一个**扩展分组**：WebUI 的控制页和批量控制页会把同组的功能归在你的插件名下，声明了设置字段的分组还会获得独立的**插件设置页**。各班级统一安装你的插件后，系统管理员可以在批量控制中对所有班级执行插件功能，并在设置页按班级或分组批量修改插件设置，由每台设备上的插件统一写入生效。
+插件还可以注册一个**扩展分组**：WebUI 的控制页和批量控制页会把同组的功能归在你的插件名下，声明了设置字段的分组还会获得独立的**插件设置页**。各班级统一安装你的插件后，拥有“插件控制”系统权限的账号可以在批量控制中对所有班级执行插件功能，并在设置页按班级或分组批量修改插件设置，由每台设备上的插件统一写入生效。
 
-本文面向想把手表或 WebUI 变成自己插件遥控器的开发者，覆盖完整开发流程、接口参考、参数表单、安全边界与常见问题。示例代码均对照 RemoteCI 当前源码整理，可直接复制到自己的插件项目中。
+本文面向想把手表、手机或 WebUI 变成自己插件遥控器的开发者，覆盖完整开发流程、接口参考、参数表单、安全边界与常见问题。示例代码均对照 RemoteCI 当前源码整理，可直接复制到自己的插件项目中。
 
 ## 能做什么
 
-扩展接口适合把“只有你的插件能做的事”带到手表和 WebUI 上，例如：
+扩展接口适合把“只有你的插件能做的事”带到 WebUI、Android 和手表上，例如：
 
 - 锁屏、休眠、重启或退出某个程序；
 - 显示自定义提醒或触发你的插件自己的通知；
@@ -29,18 +29,18 @@ RemoteCI 插件公开了一组扩展接口：其他 ClassIsland 插件可以把�
 一次扩展点击的完整链路如下：
 
 1. 你的插件在 ClassIsland 启动完成（`AppStarted`）后，从主机容器取得 `IRemoteCiExtensionRegistry` 并注册扩展。
-2. RemoteCI 插件监听注册表变化，把扩展清单通过 `extensions_sync` 同步给局域网手表和云端服务端。
-3. 服务端为每个扩展应用启用、非管理员开放和个人手表展示策略；手表与 WebUI 再按当前用户有效权限显示入口。
-4. 用户在手表或 WebUI 点击无参数扩展时立即发送 `RunExtension` 命令；有参数扩展先填写参数表单再发送。
+2. RemoteCI 插件监听注册表变化，把扩展清单通过 `extensions_sync` 同步给局域网客户端和云端服务端。
+3. 服务端为每个扩展应用启用、非管理员开放和个人客户端展示策略；WebUI 与客户端再按当前用户有效权限显示入口。
+4. 用户在 WebUI 或客户端点击无参数扩展时立即发送 `RunExtension` 命令；有参数扩展先填写参数表单再发送。
 5. RemoteCI 插件执行端校验权限与必填参数，调用你的 `ExecuteAsync`。
-6. 你返回 `CommandResult`，RemoteCI 把它作为回执传回发起命令的手表或 WebUI 并显示结果。
+6. 你返回 `CommandResult`，RemoteCI 把它作为回执传回发起命令的 WebUI 或客户端并显示结果。
 
 整个流程中，RemoteCI 只负责“同步清单、转发命令、传回回执”，功能本身始终由你的代码实现。
 
 插件设置走一条独立的链路：
 
 1. 你的插件注册 `IRemoteCiExtensionGroup`，声明设置字段并实现读取与写入回调。
-2. RemoteCI 插件在连接建立、分组注册和你调用 `NotifySettingsChanged` 时，读取当前设置值，通过 `extension_groups_sync` 同步给服务端（局域网手表不需要这份数据）。
+2. RemoteCI 插件在连接建立、分组注册和你调用 `NotifySettingsChanged` 时，读取当前设置值，通过 `extension_groups_sync` 同步给服务端（局域网客户端不需要这份数据）。
 3. 系统管理员或获准的班主任在 WebUI 设置页修改设置；服务端按字段声明校验后发送 `ApplyExtensionSettings` 命令，只包含本次要修改的字段。
 4. RemoteCI 插件执行端再次校验，调用你的 `ApplySettingsAsync`，随后重新读取并上报当前值。
 
@@ -107,7 +107,7 @@ public sealed class LockScreenExtension : RemoteCiExtensionBase
     /// <summary>手表控制菜单上显示的文案。</summary>
     public override string DisplayName => "锁屏";
 
-    /// <summary>执行所需的最小权限；手表、WebUI 显示与插件执行端都会校验。</summary>
+    /// <summary>执行所需的最小权限；WebUI、客户端显示与插件执行端都会校验。</summary>
     public override UserPermissions RequiredPermission => UserPermissions.RunExtensions;
 
     /// <summary>可选 Material 图标名；未命中手表白名单时回退为纯文字。</summary>
@@ -132,7 +132,7 @@ public sealed class LockScreenExtension : RemoteCiExtensionBase
 
 ### 3. 定义带参数扩展（自定义提醒）
 
-参数通过 `Parameters` 声明，手表会按 schema 渲染表单；用户提交后以 `args` 字典传入 `ExecuteAsync`：
+参数通过 `Parameters` 声明，客户端会按 schema 渲染表单；用户提交后以 `args` 字典传入 `ExecuteAsync`：
 
 ~~~csharp
 using RemoteCI.Plugin.Extensions;
@@ -241,13 +241,13 @@ public class MyPluginEntry : PluginBase
 ### 5. 验证
 
 1. 编译插件并安装到 ClassIsland，重启 ClassIsland。
-2. 确认 RemoteCI 设置中连接正常，手表控制页能看到课程状态。
-3. 打开手表“控制”页，底部应出现“锁屏”和“自定义提醒”两个入口。
+2. 确认 RemoteCI 设置中连接正常，客户端控制页能看到课程状态。
+3. 打开 Android 或手表的“控制”页，底部应出现“锁屏”和“自定义提醒”两个入口。
 4. 点击“锁屏”应直接执行并收到“已锁屏”回执；点击“自定义提醒”应进入参数表单，填写后执行。
-5. 修改权限或注销后，入口应立即从手表消失（清单会重新同步）。
+5. 修改权限或注销后，入口应立即从客户端消失（清单会重新同步）。
 
 ::: warning 权限影响可见性
-扩展调用只需要独立的 `RunExtensions` 账号权限，并满足管理员为该扩展设置的开放策略。测试时如果看不到按钮，请依次检查“扩展功能”权限、扩展编辑窗口中的启用/普通账号开放开关，以及账号自己的手表展示开关。
+扩展调用只需要独立的 `RunExtensions` 账号权限，并满足管理员为该扩展设置的开放策略。测试时如果看不到按钮，请依次检查“使用扩展功能”权限、扩展编辑窗口中的启用/普通账号开放开关，以及账号自己的客户端展示开关。
 :::
 
 ### 6. 声明插件分组与设置页（可选）
@@ -378,9 +378,9 @@ app.AppStopping += (_, _) =>
 | 成员 | 类型 | 说明 |
 | --- | --- | --- |
 | `Id` | `string` | 全局唯一扩展 Id；必须非空、无首尾空白且不超过 200 个字符，与已有注册项冲突时 `Register` 会抛出异常 |
-| `DisplayName` | `string` | 手表与 WebUI 控制菜单展示的文案 |
+| `DisplayName` | `string` | WebUI 与客户端控制菜单展示的文案 |
 | `RequiredPermission` | `UserPermissions` | 旧扩展兼容字段；建议返回 `RunExtensions`，当前不参与额外鉴权 |
-| `Icon` | `string?` | 可选 Material 图标名；取值见[扩展图标名](#扩展图标名)，未知或缺失时手表回退为纯文字 |
+| `Icon` | `string?` | 可选 Material 图标名；取值见[扩展图标名](#扩展图标名)，未知或缺失时客户端回退为纯文字 |
 | `Parameters` | `IReadOnlyList<ExtensionParameter>` | 可选参数表单描述；为空时点击后直接执行 |
 | `Description` | `string?` | 可选功能说明，WebUI 在功能卡片上展示；接口带默认实现，返回 `null` |
 | `GroupId` | `string?` | 可选所属扩展分组 Id，与 `IRemoteCiExtensionGroup.Id` 对应；接口带默认实现，返回 `null`（归入“其他扩展”） |
@@ -437,7 +437,7 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 
 ### CommandResult 与回执码
 
-`ExecuteAsync` 必须返回 `CommandResult`。`Message` 会展示在发起操作的手表或 WebUI 上，因此建议写用户能看懂的结果文案。
+`ExecuteAsync` 必须返回 `CommandResult`。`Message` 会展示在发起操作的 WebUI 或客户端上，因此建议写用户能看懂的结果文案。
 
 常用回执码：
 
@@ -452,25 +452,11 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 
 ### UserPermissions 权限位
 
-有效权限是位掩码，管理员固定为全部权限：
-
-| 值 | 权限 |
-| --- | --- |
-| 1 | 查看当前课程 |
-| 2 | 概览 |
-| 4 | 人员管理 |
-| 8 | 发送与清除通知 |
-| 16 | 换课 |
-| 32 | 电源控制（含音量） |
-| 64 | 保留权限位（暂时隐藏） |
-| 128 | 扩展功能 |
-| 256 | 主界面 |
-
-所有扩展调用统一只要求 `RunExtensions`。`RequiredPermission` 为旧扩展及协议兼容而保留，建议新实现返回 `RunExtensions`。旧名称 `SystemControl` 仍作为 `PowerControl` 的源码兼容别名保留。
+扩展调用统一只要求 `RunExtensions`（值 128），并满足服务端为该扩展设置的开放策略。`RequiredPermission` 字段为旧扩展兼容保留，当前不参与额外鉴权，新实现建议返回 `RunExtensions`。账号的完整班级权限与系统管理权限位见[通信协议](https://github.com/Edge-HH/RemoteCI/blob/main/docs/protocol.md#身份与权限)；权限细化后新增了发起换课申请、强制换课、文件分发、屏幕截图、本班档案、音量与静音、远程终端、ClassIsland 程序控制、管理插件、升级软件、设备应用守护等独立权限。旧名称 `SystemControl` 仍作为 `PowerControl` 的源码兼容别名保留。
 
 ## 扩展图标名
 
-`Icon` 取值为手表端内置的 Material 图标白名单。图标名不区分大小写，下划线、连字符、空格会被忽略，`Icons.Rounded.` 前缀同样可省略，因此 `PowerSettingsNew`、`power_settings_new`、`Icons.Rounded.PowerSettingsNew` 等价。未命中白名单或留空时，按钮回退为纯文字。
+`Icon` 取值为客户端内置的 Material 图标白名单（Wear OS 与 Android 使用相同名称）。图标名不区分大小写，下划线、连字符、空格会被忽略，`Icons.Rounded.` 前缀同样可省略，因此 `PowerSettingsNew`、`power_settings_new`、`Icons.Rounded.PowerSettingsNew` 等价。未命中白名单或留空时，按钮回退为纯文字。
 
 | 分类 | 可用图标名 |
 | --- | --- |
@@ -491,7 +477,7 @@ RemoteCI 插件把它注册为 ClassIsland 主机容器的单例服务，可通�
 
 `notification`、`notifications`、`message`、`volume`、`volumeup`、`power`、`poweroff`、`gear`、`update`、`restart`、`reboot`、`swap`、`exchange`、`connect`、`show`、`hide`、`hidden`、`clear`、`clearnotifications`
 
-白名单随手表版本发布，未列出的图标名需要先加入手表端白名单并等待手表更新后才生效：
+白名单随客户端版本发布，未列出的图标名需要先加入客户端白名单并等待客户端更新后才生效：
 
 ```csharp
 /// <summary>使用白名单中的 Material 图标名。</summary>
@@ -500,7 +486,7 @@ public override string? Icon => "broadcast_on_home";
 
 ## 参数表单
 
-扩展可声明 `Parameters` 列表，手表与 WebUI 按 schema 渲染参数输入页，用户填写后以 `extensionArgs` 字典传入 `ExecuteAsync`（键为参数 `Key`，值统一为字符串）。扩展分组的 `Settings` 使用同一个 `ExtensionParameter` 结构，在插件设置页渲染：
+扩展可声明 `Parameters` 列表，WebUI 与客户端按 schema 渲染参数输入页，用户填写后以 `extensionArgs` 字典传入 `ExecuteAsync`（键为参数 `Key`，值统一为字符串）。扩展分组的 `Settings` 使用同一个 `ExtensionParameter` 结构，在插件设置页渲染：
 
 | 类型 | 控制端呈现 |
 | --- | --- |
@@ -508,7 +494,7 @@ public override string? Icon => "broadcast_on_home";
 | `Number` | 数字输入 |
 | `Switch` | 开关（值为 `"true"` / `"false"`） |
 | `Select` | 候选项循环切换（需提供 `Options`） |
-| `Color` | WebUI：取色器 + 透明度滑块 + 十六进制输入 + 色卡；手表与旧版服务端按文本处理 |
+| `Color` | WebUI：取色器 + 透明度滑块 + 十六进制输入 + 色卡；不支持颜色控件的客户端与旧版服务端按文本处理 |
 
 交互细节：
 
@@ -581,14 +567,14 @@ new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Ty
 
 ## 安全边界
 
-- 扩展必须处于启用状态；非管理员还需由管理员逐项开放。WebUI 控制页以列表显示扩展名、ID、执行和编辑按钮，管理员可编辑全局策略，普通账号只能编辑自己的手表展示开关。
-- 扩展调用要求 `RunExtensions` 并通过服务端逐扩展开放策略；服务端与插件执行端都会校验，手表/WebUI 隐藏入口不构成安全控制。
+- 扩展必须处于启用状态；非管理员还需由管理员逐项开放。WebUI 控制页以列表显示扩展名、ID、执行和编辑按钮，管理员可编辑全局策略，普通账号只能编辑自己的客户端展示开关。
+- 扩展调用要求 `RunExtensions` 并通过服务端逐扩展开放策略；服务端与插件执行端都会校验，WebUI / 客户端隐藏入口不构成安全控制。
 - 未注册的扩展 Id 返回 `INVALID_REQUEST`；权限不足返回 `FORBIDDEN`；缺少必填参数返回 `INVALID_REQUEST`。
 - 授权镜像超过 24 小时未更新时，局域网直连会拒绝执行任何扩展命令。
 - `ExecuteAsync` 抛出的异常统一转换为 `INTERNAL_ERROR` 回执，不会中断 RemoteCI 插件。
 - 建议在 `ExecuteAsync` 中用 `context.RequestedBy` 记录审计日志；不要在扩展中保存用户密码、令牌等敏感数据。
 - 修改插件设置的权限独立于扩展执行：系统管理员可修改任意班级；其他账号只有在你的插件被开放给班级自行管理（“管理 › 插件控制”页打开插件 →“班级自治”，默认不开放）、且在本班拥有“修改本班插件设置”权限（班主任默认拥有）时，才能在“班级管理 › 插件”中看到它并修改自己班级的设置。批量下发需要“插件控制”权限。
-- 修改设置只能经服务端 WebUI 或扩展设置 API 发起：手表、手机的通用命令通道和 `POST /api/commands` 会被拒绝，局域网直连收到 `ApplyExtensionSettings` 时插件直接返回 `FORBIDDEN`。
+- 修改设置只能经服务端 WebUI 或扩展设置 API 发起：客户端的通用命令通道和 `POST /api/commands` 会被拒绝，局域网直连收到 `ApplyExtensionSettings` 时插件直接返回 `FORBIDDEN`。
 - `GetSettings()` 返回的值会同步到服务端并展示给有权修改设置的账号，不要把密码、令牌等敏感信息声明为设置字段。
 
 ## 注意事项与最佳实践
@@ -599,7 +585,7 @@ new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Ty
 - 参数解析要防御 `null`，使用 `args.GetValueOrDefault(key)` 并给出兜底值。
 - 插件更新时尽量保持接口兼容，避免因为 `RemoteCI.Plugin.dll` 版本不一致导致扩展不可用。
 - 与 RemoteCI 内置命令同类型的操作不要重复注册，避免控制菜单冗余。
-- `Icon` 只能填写[扩展图标名](#扩展图标名)中的白名单项；该白名单在手表端编译期固化，插件不能自定义图片或图标。
+- `Icon` 只能填写[扩展图标名](#扩展图标名)中的白名单项；该白名单在客户端编译期固化，插件不能自定义图片或图标。
 - 设置字段的 `Key` 一经发布应保持稳定：批量下发按 `Key` 部分更新，改名后旧值无法对应。
 - `ApplySettingsAsync` 只处理 `values` 中出现的键，未出现的字段保持原值；这样管理员只勾选一项批量下发时，不会覆盖各班其他不同的设置。
 - 回调在后台线程执行；需要修改绑定到 ClassIsland 界面的对象时，请自行切回 UI 线程（如 `Dispatcher.UIThread.InvokeAsync`）。
@@ -609,14 +595,14 @@ new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Ty
 
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
-| 手表或 WebUI 看不到扩展入口 | 清单未同步、扩展未启用或开放、个人展示已关闭、权限不足、插件未连接 | 重启 ClassIsland；检查扩展编辑窗口与账号权限；确认 RemoteCI 连接正常 |
-| 点击后提示 `FORBIDDEN` | 缺少“扩展功能”权限或管理员未开放 | 授予“扩展功能”权限，并检查该扩展的开放策略 |
+| WebUI 或客户端看不到扩展入口 | 清单未同步、扩展未启用或开放、个人展示已关闭、权限不足、插件未连接 | 重启 ClassIsland；检查扩展编辑窗口与账号权限；确认 RemoteCI 连接正常 |
+| 点击后提示 `FORBIDDEN` | 缺少“使用扩展功能”权限或管理员未开放 | 授予“使用扩展功能”权限，并检查该扩展的开放策略 |
 | 提示 `INVALID_REQUEST` | 扩展 Id 未注册、缺少必填参数，或参数不符合类型、范围、选项声明 | 检查插件是否加载了注册代码；按提示修正参数 |
 | 提示 `INTERNAL_ERROR` | `ExecuteAsync` 抛出了异常 | 查看 ClassIsland 日志中的 `RemoteCI 扩展执行失败` 记录 |
 | 提示 `COMMAND_TIMEOUT` | 执行时间超过回执等待上限 | 缩短执行时间，或把耗时操作改为异步任务后立即返回 |
 | 注册时抛出“扩展 Id 已存在” | `Id` 与其他插件冲突 | 修改为全局唯一的 `Id` |
 | WebUI 没有出现插件分组或“插件设置” | 未注册分组、`Settings` 为空、RemoteCI 插件或服务端未升级、设备未连接云端 | 确认调用了 `RegisterGroup` 且声明了设置字段；确认插件能力中包含 `extensions.settings` |
-| 班主任看不到“插件设置”或“班级管理”中没有“插件” | 系统管理员尚未把该插件开放给班级自行管理，或本班角色没有“扩展功能”权限 | 由系统管理员在“管理 › 插件控制”页打开该插件，点击“允许班主任自行管理”，并检查班内角色权限 |
+| 班主任看不到“插件设置”或“班级管理”中没有“插件” | 系统管理员尚未把该插件开放给班级自行管理，或本班角色没有“修改本班插件设置”权限 | 由系统管理员在“管理 › 插件控制”页打开该插件，点击“允许班主任自行管理”，并检查班内角色权限 |
 | 批量下发后部分班级显示“扩展分组不存在” | 这些班级的设备没有安装你的插件，或插件版本过旧 | 先在“批量控制 → 安装插件”统一安装，再重新下发 |
 | 下发结果显示“已保存，插件上线后自动补发” | 该班插件离线 | 无需处理；插件上线并调用过 `RegisterGroup` 后服务端会自动补发，`ApplySettingsAsync` 届时被调用 |
 | 设置页的当前值不是最新 | 本机修改后没有通知 RemoteCI | 在本地设置变化时调用 `NotifySettingsChanged(groupId)` |
@@ -625,4 +611,4 @@ new ExtensionParameter { Key = "shadowOpacity", Label = "阴影不透明度", Ty
 
 - [项目架构](../development/architecture.md)：协议 v3 数据流与命令编号。
 - [文档同步规则](../development/docs-maintenance.md)：功能变更时的文档同步要求。
-- [使用文档](../guide/features.md)：手表与 WebUI 扩展入口的实际使用方式。
+- [使用文档](../guide/features.md)：WebUI 与各客户端扩展入口的实际使用方式。

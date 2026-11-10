@@ -19,7 +19,7 @@ export default hopeTheme({
   navbar: [
     { text: "首页", icon: "home", link: "/" },
     { text: "快速开始", icon: "rocket", link: "/guide/getting-started" },
-    { text: "使用文档", icon: "book", link: "/guide/features" },
+    { text: "功能说明", icon: "book", link: "/guide/features" },
     { text: "服务端部署", icon: "server", link: "/server/deployment" },
     { text: "接入扩展", icon: "puzzle-piece", link: "/extensions/" },
     { text: "开发与贡献", icon: "code", link: "/development/docs-maintenance" },
@@ -31,11 +31,12 @@ export default hopeTheme({
         icon: "rocket",
         children: [
           "getting-started",
-          "status",
           "features",
-          "app-guard",
           "connection",
+          "app-guard",
+          "holidays",
           "troubleshooting",
+          "status",
         ],
       },
     ],

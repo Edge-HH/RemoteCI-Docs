@@ -1,57 +1,66 @@
 ---
-title: 开发状态
-icon: triangle-exclamation
-order: 2
+title: 项目状态
+icon: circle-info
+order: 6
 ---
 
-# 开发状态
+# 项目状态
 
-RemoteCI 当前稳定软件版本统一为 3.2.1.4，通信协议号为整数 3；仓库配置了 CI 构建与自动化测试，但尚未完成真机端到端验收。稳定版使用四段纯数字标签，Beta 使用 v3.x.x-beta.y 且不进入插件市场；协议号为 3 的软件可以互连，新功能由能力协商决定是否显示；V2/V4 与 V3 不能直接通信。
+RemoteCI 当前稳定版为 **3.3.2.1**（2026-11-08），通信协议号为整数 **3**。软件版本与协议版本独立：协议号为 3 的服务端、插件、WebUI、Android 与 Wear OS 可以互连，新功能是否显示由能力协商决定；V2/V4 与 V3 不能直接通信。
 
-## 已实现（3.2.1.4）
+## 组件与要求
 
-- 服务端：ASP.NET Core Identity、SQLite、PBKDF2 密码哈希、1 小时访问令牌、30 天可撤销设备会话、可吊销 API Key 和完整 Razor WebUI。
-- 权限：管理员固定拥有全部权限（65535）；普通用户默认查看当前课程和 WebUI 七日课表，可分别附加概览、人员管理、发送与清除通知、换课、扩展功能、主界面、电源控制、API 访问、文件分发和屏幕截图；旧版协议中的部分权限位继续保留兼容，但当前不在权限设置中显示。用户名只能由系统管理员修改。内置“老师”角色按用户名与课表教师名关联任教班级，并提供“我的日程”；内置“班主任”角色（原“班管理员”）在本班拥有管理能力，也按用户名提供“我的日程”。内置角色不能改名。管理员与班主任默认拥有 API 访问，学生默认没有；API Key 继承账号当前权限并可在个人账号页或人员权限页吊销。
-- 同步：服务端是账号与权限唯一真源，插件通过 WebSocket 自动同步不含密码的授权镜像；镜像离线超过 24 小时后只允许课程展示。
-- 局域网：使用设备会话派生的验证器完成一次性 HMAC 挑战认证，不发送密码或云端访问令牌。
-- 课表：状态按秒推送，七日课表独立低频同步；所有已登录账号均可在 WebUI、手机和手表查看，系统管理员和班主任可手动或定时拉取，拥有换课权限的账号可交换或替换课程并设置科目教师，也可选择把修改永久写入源课表，用修订号防止并发覆盖。
-- 换课申请：老师可跨班、跨日发起互换或“替换为我的课”申请，由对方老师（无账号时为班主任）审批后生效；可选的强制换课支持撤回，撤回后当天对该课加锁。申请、审批与撤回结果通过 WebUI 铃铛与浏览器通知、Android 通知和 AstrBot 主动提醒送达。
-- 通知：由 ClassIsland 正式通知提供方显示自定义通知，成功后广播；支持提醒强调特效、音效与语音；旁路观察自动化与第三方插件通知。
-- 控制：清除提醒、主界面显隐、电源（关机/重启/睡眠/休眠）与音量（0-100、静音）。
-- 扩展：其他 ClassIsland 插件可通过扩展注册表注册远程功能；管理员逐项控制启用及普通账号开放，每个账号可单独设置自己的手表是否展示。
-- 界面：手表根画布按系统屏幕形状分别适配圆形与矩形设备。
-- 连接设置：插件每次连云端都会上报全部可用局域网 IP、监听端口和服务状态；服务端转发并缓存，手表保存候选地址、优先逐个直连且记住成功地址。首次登录也可用 UDP 48765 扫描插件并反向获取云地址，密码仍只发往用户确认后的云服务器；鉴权后直接转为局域网连接，不重复建立云端 WebSocket。插件与手表的云端及局域网关闭开关仅在各自开发者菜单显示，普通设置仍可修改端口，手表连接页也可手动修改 IP 和端口。
-- 能力协商：插件和手表上报软件版本与稳定能力标识；WebUI 按“服务端 ∩ 当前主插件”、手表按“三端交集”隐藏不支持的入口，旧 V3 端回退到 V3 基础能力（该基线自 3.1.0 引入），管理员概览显示逐连接诊断。
-- 更新：WebUI 与手表可选择正式版/Beta 渠道，并可对同一版本强制重新下载覆盖且拒绝降级；Windows 与裸机 Linux 使用独立更新器规避运行文件锁，Docker 由重启策略拉起，fnOS 从 GitHub Release 下载 FPK 后由应用中心手动升级；服务端只替换实际程序集目录，并在 Development 环境禁用在线覆盖，避免污染源码；稳定渠道只选择四段纯数字 Release，Beta 渠道额外选择 v3.x.x-beta.y及在 GitHub 标为预发布的四段 Release，旧三段 v3.x.x 稳定标签不再作为新候选；手表更新不受 WebUI 软件小版本限制；插件由 ClassIsland 插件市场管理；管理员可在 WebUI“批量控制”页查看每台设备的主程序与插件版本，并批量触发官方插件升级或 ClassIsland 升级。
+| 组件 | 版本 / 要求 | 说明 |
+| --- | --- | --- |
+| 服务端 | .NET 10、ASP.NET Core 10、SQLite | 发布 linux-x64、linux-arm64、win-x64 压缩包，也提供 Docker 镜像与国产 NAS / fnOS FPK |
+| ClassIsland 插件 | net8.0；ClassIsland 2.1.0 及以上 | 以 ClassIsland Plugin SDK 2.1.0.1 编译，AnyCPU，可随 x86 / x64 / arm64 宿主加载 |
+| 桌面 WebUI | 浏览器 | 主要管理入口：班级、档案、课表、集控、权限、统计与系统设置 |
+| 手机网页 / PWA | 现代浏览器；iOS / iPadOS 16.4+ | 与桌面 WebUI 共用服务端，无需安装应用 |
+| Android | Android 8.0（API 26）及以上 | 原生课表、控制、小组件、上课状态通知与系统日历 |
+| Wear OS | Wear OS 3（API 30）及以上 | 课表、状态、通知与授权控制；功能更新可能滞后于 WebUI 与 Android |
+| AstrBot 插件 | AstrBot 4.26 及以上 | 独立仓库 `astrbot_plugin_remoteci`，仍在开发中 |
 
-## 测试与 CI
+## 当前能力
 
-仓库已配置 GitHub Actions：
+- **集控**：通知与语音、主界面、音量、电源、屏幕截图、文件分发、远程终端、插件市场与 CIPX 安装、ClassIsland 与插件升级、加入 ClassIsland 集控、班级策略、ClassIsland 设置远程读写、应用守护。
+- **教务**：基础课表与调课记录、直接换课与永久换课、老师换课申请与审批、强制换课与撤回、学期与教学周、节假日与调休、课时统计、档案库与班级档案、科目教师与地点。
+- **日程**：老师按姓名绑定任教班级、跨班“我的日程”、每周 / 单双周 / 多周轮换的自定义课程、课前与上课提醒、系统日历与网页日历订阅。
+- **运维**：设备状态与离线告警、自动化规则、操作记录、档案版本历史与设备差异、电子班牌。
+- **账号与安全**：角色默认权限 + 个人新增 / 收回、班级权限与系统管理权限分离、TOTP 二步验证、可撤销设备会话、API Key、插件长期凭据。
+- **开放接口**：REST API、AstrBot、Agent Skill，以及其他 ClassIsland 插件注册的扩展功能与设置页。
 
-- dotnet 作业：`dotnet build RemoteCI.slnx -c Release` 与 `dotnet test RemoteCI.slnx -c Release --no-build`。
-- wearos 作业：`./gradlew :app:assembleDebug :app:testDebugUnitTest`。
+## 发布与更新
 
-源码中的自动化测试覆盖配对认证、权限、API Key 鉴权/动态权限/吊销/备份恢复、WebSocket 中转、能力上报与回退、主插件切换和能力交集、插件网络信息发现/实时转发/缓存、首次登录局域网扫描与云地址引导、手表局域网候选地址与端口、插件连接/手表主动拉取课表、拉取周期持久化、换课、通知标题、扩展路由、圆形/矩形屏幕根画布策略、更新渠道与同版本强制覆盖策略、跨协议 Release 排除、Windows 锁文件重试、Android 安装状态处理，以及设备版本清单持久化、按连接定向下发和远程升级命令权限。
+稳定版使用四段纯数字标签（例如 <code>3.3.2.1</code>），Beta 使用 <code>v3.x.x-beta.y</code> 且不进入插件市场。推送标签会触发 Release 工作流，产物包括：
 
-## 发布
+- 服务端：<code>RemoteCI.Server-版本-linux-x64.zip</code>、<code>linux-arm64</code>、<code>win-x64</code> 压缩包及 SHA-256 校验文件。
+- 插件：固定资产名 <code>RemoteCI.Plugin.cipx</code> 与 <code>checksums.md</code>，正文携带同名文件的 <code>CLASSISLAND_PKG_MD5</code> 标记。
+- Android：<code>RemoteCI.Mobile-版本.apk</code>；Wear OS：<code>RemoteCI.Watch-版本.apk</code>。APK 使用发布签名。
+- 飞牛 fnOS：在线多架构 FPK、x86_64 与 ARM64 离线 FPK，以及 <code>ghcr.io/edge-hh/remoteci</code> 多架构镜像。
 
-推送四段纯数字稳定标签（例如 <code>3.2.1.4</code>）或测试用 Beta 标签（例如 <code>v3.2.2-beta.1</code>）会触发 Release 工作流，产出：
+服务端与 Android / Wear OS 可在应用内选择正式版或 Beta 渠道；插件由 ClassIsland 插件市场或 WebUI 批量升级；飞牛可在 WebUI 自更新，或从应用中心安装新 FPK。正式渠道只选择与当前协议主版本相同的四段发布，Beta 渠道额外包含预发布版本。
 
-- 服务端：linux-x64 与 win-x64 压缩包（<code>RemoteCI.Server-版本-平台.zip</code>）。
-- 插件：稳定版固定使用 <code>RemoteCI.Plugin.cipx</code> 与 <code>checksums.md</code>；Release 正文包含与该文件名一致的 <code>CLASSISLAND_PKG_MD5</code> 标记，Beta 包不进入插件市场。
-- 手表：<code>RemoteCI.Watch-版本.apk</code>（配置签名密钥时使用 Release 签名）。
-- 飞牛 fnOS：一个在线多架构 FPK、x86_64 与 ARM64 两个单架构离线 FPK，以及 <code>ghcr.io/edge-hh/remoteci</code> 多架构镜像。
+## 持续集成
 
-## 待真机验收
+仓库的 GitHub Actions 当前包含：
 
-以下流程需要真机或真实环境完成端到端验证后，文档才能标注为稳定教程：
+- **dotnet**：构建并测试服务端、插件与共享协议库，校验市场包与发布标签解析。
+- **wearos**：`./gradlew :app:assembleDebug :app:testDebugUnitTest`。
+- **android-mobile**：`./gradlew :app:assembleDebug :app:testDebugUnitTest`。
+- **container**：构建镜像并验证自更新入口。
+- **fnos fpk**：打包三种 FPK 并校验结构与离线镜像导入流程。
 
-1. 首次硬切迁移需手动安装 3.2.1.2 的服务端或 FPK、ClassIsland 插件和 Wear OS APK；迁移后使用四段稳定标签完成自动更新与连接。
-2. 插件完成一次性配对并保持云端 WebSocket 连接。
-3. 手表账号登录、令牌续期和会话撤销通过。
-4. 新功能在 WebUI 尚未更新或某块手表不支持时按能力交集隐藏，管理员逐连接诊断与主插件切换结果正确。
-5. 当前状态与七日课表成功同步，通知与振动正确触发。
-6. 交换、替换及永久换课、音量、电源和扩展命令按权限返回正确结果。
-7. 局域网优先与云端回退在真机上通过。
-8. Docker、HTTPS、自动更新、备份和恢复流程完成实际演练。
-9. 飞牛 fnOS 真机安装在线/离线 FPK、向导配置、桌面入口与应用中心手动升级完成实际演练；ARM64 包目前仅完成 CI/QEMU 验证。
+## 已知限制
+
+- Wear OS 端的功能更新可能慢于 WebUI 与 Android；不同端的入口与能力以实际发布版本为准。
+- iOS / iPadOS 通过手机网页与主屏幕 PWA 使用，没有原生客户端；不提供 watchOS 客户端。
+- 不提供面向公网的托管服务，账号、课表与档案都由部署者自行保存。
+- 应用守护用于减少误退出与误删除，不是不可绕过的防篡改机制；通过 Microsoft Store（MSIX）安装的 ClassIsland 不支持“禁止删除”，其余守护功能照常生效。
+- 屏幕截图默认保留 24 小时、每班最多 30 张；配置备份不包含截图。
+- 课时台账从启用后开始累积，服务端停机期间结束的课无法补录。
+
+## 相关页面
+
+- [项目架构](../development/architecture.md)：运行组件、数据流、协议与权限模型。
+- [功能说明](features.md)：当前全部用户功能。
+- [文档同步规则](../development/docs-maintenance.md)：功能变更时的文档同步要求。
