@@ -208,6 +208,7 @@ GET /api/me/schedule/next?at={ISO 8601 时间}&timeZoneOffsetMinutes={分钟}
 | `GET /api/me/notifications?after=&unread=true` | 个人通知列表 |
 | `POST /api/me/notifications/read` | 标记已读：`{ids:[…]}` 或 `{all:true}` |
 | `POST /api/me/action-links` | 为聊天卡片按钮签发一次性确认链接：`{action, targetId}`，`action` 为 `swap.approve`、`swap.reject` 或 `swap.revoke`，返回 `{url, path, expiresAt}` |
+| `POST /api/me/operation-approvals` | 为账号/班级管理高危操作签发一次性网页授权链接：`{action, targetId, payload?}`，`action` 为 `user.create`、`user.update`、`user.password`、`user.delete`、`class.delete`，`payload` 为对应 REST 请求体（删除类省略），返回 `{url, path, expiresAt}`。用户打开 `/Approve/{token}` 核对摘要并输入账号密码或一次性验证码后服务端才执行；链接 15 分钟有效、只能用一次，签发与执行各校验一次权限 |
 
 - **`mode`**：`1` 互换，`source`、`target` 各是一节课 `{classId, date, index}`；`2` 替换，只填 `target` 与 `subjectName`。
 - **`{id}`**：也接受响应中的 8 位 `shortId`。
